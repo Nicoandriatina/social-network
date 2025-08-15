@@ -1,0 +1,224 @@
+// ✅ PRISMA SCHEMA avec optimisation pour app Mada Social Network
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  ETABLISSEMENT
+  ENSEIGNANT
+  DONATEUR
+}
+
+enum UserRole {
+  SIMPLE
+  ADMIN
+  SUPERADMIN
+}
+
+enum EtablissementType {
+  PUBLIC
+  PRIVE
+}
+
+enum EtablissementNiveau {
+  EPP
+  CEG
+  LYCEE
+  COLLEGE
+  UNIVERSITE
+  ORGANISME
+}
+
+enum ProjectCategory {
+  CONSTRUCTION
+  REHABILITATION
+  AUTRES
+}
+
+enum DonType {
+  MONETAIRE
+  VIVRES
+  NON_VIVRES
+}
+
+enum DonStatus {
+  ENVOYE
+  RECEPTIONNE
+  EN_ATTENTE
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  fullName       String
+  telephone      String?  @unique
+  adressePostale String?
+  avatar         String?
+  secteur        String?
+  profession     String?
+  facebook       String?
+  twitter        String?
+  whatsapp       String?
+
+  type           UserType
+  role           UserRole     @default(SIMPLE)
+  isValidated    Boolean      @default(false)
+
+  emailVerified  Boolean      @default(false)
+
+  // Relations
+  etablissement  Etablissement? @relation(fields: [etablissementId], references: [id])
+  etablissementId String?
+
+  enseignant     Enseignant?
+  donateur       Donateur?
+
+  scolariteAnnee Int[]
+
+  amis           FriendRequest[] @relation("UserFriends")
+  amisDemandes   FriendRequest[] @relation("FriendRequests")
+
+  projects       Project[]     @relation("AuteurProjet")
+  donsFaits      Don[]         @relation("Donateur")
+  donsRecus      Don[]         @relation("BeneficiairePersonnel")
+
+  adminEtablissement Etablissement[] @relation("AdminEtablissement")
+  transactionsEffectuees Transaction[] @relation("AdminTransactions")
+
+  messagesEnvoyes Message[]  @relation("MessageFrom")
+  messagesRecus   Message[]  @relation("MessageTo")
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Enseignant {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String   @unique
+
+  school     String?
+  position   String?
+  experience String?
+  degree     String?
+  validated  Boolean @default(false)
+}
+
+model Donateur {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String   @unique
+
+  donorType  String?
+  sector     String?
+}
+
+model Etablissement {
+  id         String               @id @default(cuid())
+  nom        String
+  type       EtablissementType
+  niveau     EtablissementNiveau
+  adresse    String?
+  anneeCreation Int?
+  nbEleves   Int?
+
+  admin      User[]               @relation("AdminEtablissement")
+  membres    User[]               // enseignants liés
+  projects   Project[]
+  donsRecus  Don[]                @relation("BeneficiaireEtab")
+
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+}
+
+model Project {
+  id               String         @id @default(cuid())
+  reference        String         @unique
+  titre            String
+  description      String
+  photos           String[]
+  datePublication  DateTime?
+  dateDebut        DateTime?
+  dateFin          DateTime?
+  categorie        ProjectCategory
+
+  auteur           User           @relation("AuteurProjet", fields: [auteurId], references: [id])
+  auteurId         String
+
+  etablissement    Etablissement  @relation(fields: [etablissementId], references: [id])
+  etablissementId  String
+
+  dons             Don[]
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model Don {
+  id           String      @id @default(cuid())
+  libelle      String
+  type         DonType
+  quantite     Int?
+  photos       String[]
+  statut       DonStatus   @default(EN_ATTENTE)
+  dateEnvoi    DateTime?
+  dateReception DateTime?
+
+  project     Project?     @relation(fields: [projectId], references: [id])
+  projectId   String?
+
+  beneficiaireEtab Etablissement? @relation("BeneficiaireEtab", fields: [etablissementId], references: [id])
+  etablissementId String?
+
+  beneficiairePersonnel User? @relation("BeneficiairePersonnel", fields: [personnelId], references: [id])
+  personnelId String?
+
+  donateur     User        @relation("Donateur", fields: [donateurId], references: [id])
+  donateurId   String
+
+  transaction  Transaction?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model FriendRequest {
+  id        String   @id @default(cuid())
+  from      User     @relation("UserFriends", fields: [fromId], references: [id])
+  fromId    String
+  to        User     @relation("FriendRequests", fields: [toId], references: [id])
+  toId      String
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  from      User     @relation("MessageFrom", fields: [fromId], references: [id])
+  fromId    String
+  to        User     @relation("MessageTo", fields: [toId], references: [id])
+  toId      String
+  sentAt    DateTime @default(now())
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  montant        Float
+  moyenPaiement  String
+
+  don            Don      @relation(fields: [donId], references: [id])
+  donId          String   @unique
+
+  admin          User     @relation("AdminTransactions", fields: [adminId], references: [id])
+  adminId        String
+
+  createdAt      DateTime @default(now())
+}
