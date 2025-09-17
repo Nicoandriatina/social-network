@@ -171,13 +171,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import * as z from "zod";
-import StepSelector from "@/components/StepSelector";
-import ProfileSelector from "@/components/ProfileSelector";
-import BasicInfoFields from "@/components/BasicInfoFields";
-import AvatarUpload from "@/components/AvatarUpload";
-import EtablissementFields from "@/components/EtablissementFields";
-import EnseignantFields from "@/components/EnseignantFields";
-import DonateurFields from "@/components/DonateurFields";
+import StepSelector from "@/components/RegisterComponent/StepSelector";
+import ProfileSelector from "@/components/RegisterComponent/ProfileSelector";
+import BasicInfoFields from "@/components/RegisterComponent/BasicInfoFields";
+import AvatarUpload from "@/components/RegisterComponent/AvatarUpload";
+import EtablissementFields from "@/components/RegisterComponent/EtablissementFields";
+import EnseignantFields from "@/components/RegisterComponent/EnseignantFields";
+import DonateurFields from "@/components/RegisterComponent/DonateurFields";
 import { useRouter } from "next/navigation";
 
 const baseFields = z.object({

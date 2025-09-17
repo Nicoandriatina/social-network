@@ -13,9 +13,9 @@
 // app/dashboard/page.tsx
 "use client";
 
-import DonateurDashboard from "@/components/DashboardDonateur";
-import EnseignantDashboard from "@/components/DashboardEnseign";
-import EtabDashboard from "@/components/DashboardEtab";
+import DonateurDashboard from "@/components/ProfilComponent/DashboardDonateur";
+import EnseignantDashboard from "@/components/ProfilComponent/DashboardEnseign";
+import EtabDashboard from "@/components/ProfilComponent/DashboardEtab";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 

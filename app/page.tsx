@@ -1,10 +1,10 @@
 "use client";
 
-import Header from "@/components/Header";
-import Hero from "@/components/Hero";
-import Footer from "@/components/Footer";
-import FeaturesSection from "@/components/FeatureSection";
-import HowItWorksSection from "@/components/Working";
+import Header from "@/components/LandigComponent/Header";
+import Hero from "@/components/LandigComponent/Hero";
+import Footer from "@/components/LandigComponent/Footer";
+import FeaturesSection from "@/components/LandigComponent/FeatureSection";
+import HowItWorksSection from "@/components/LandigComponent/Working";
 import Link from "next/link";
 
 export default function HomePage() {
