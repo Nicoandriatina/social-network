@@ -1,18 +1,286 @@
-// app/api/projects/[id]/route.js
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { unlink } from 'fs/promises';
-import path from 'path';
 
-const prisma = new PrismaClient();
+// // app/api/projects/[id]/route.ts
+// import { NextResponse } from "next/server";
+// import { cookies } from "next/headers";
+// import jwt from "jsonwebtoken";
+// import { prisma } from "@/lib/prisma";
+// import { z } from "zod";
 
-// GET - Récupérer un projet par ID
-export async function GET(request, { params }) {
+// export const runtime = "nodejs";
+
+// // GET - Récupérer un projet spécifique
+// export async function GET(
+//   req: Request,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const cookieStore = await cookies();
+//     const token = cookieStore.get("token")?.value;
+    
+//     if (!token) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+//       userId: string;
+//       role: string;
+//       type: string;
+//     };
+
+//     // CORRECTION: Attendre params avant de l'utiliser
+//     const resolvedParams = await params;
+    
+//     if (!resolvedParams?.id) {
+//       return NextResponse.json({ error: "ID du projet manquant" }, { status: 400 });
+//     }
+
+//     const project = await prisma.project.findUnique({
+//       where: { id: resolvedParams.id },
+//       include: {
+//         auteur: {
+//           select: {
+//             id: true,
+//             fullName: true,
+//             avatar: true,
+//             email: true
+//           }
+//         },
+//         etablissement: {
+//           select: {
+//             id: true,
+//             nom: true,
+//             type: true,
+//             niveau: true,
+//             adresse: true
+//           }
+//         },
+//         dons: {
+//           include: {
+//             donateur: {
+//               select: {
+//                 id: true,
+//                 fullName: true,
+//                 avatar: true
+//               }
+//             }
+//           },
+//           orderBy: {
+//             createdAt: 'desc'
+//           }
+//         },
+//         _count: {
+//           select: {
+//             dons: true
+//           }
+//         }
+//       }
+//     });
+
+//     if (!project) {
+//       return NextResponse.json({ error: "Projet non trouvé" }, { status: 404 });
+//     }
+
+//     // Calculer les statistiques
+//     const totalRaised = project.dons
+//       .filter(don => don.statut === 'RECEPTIONNE')
+//       .reduce((sum, don) => sum + 0, 0); // À adapter selon votre logique de calcul
+
+//     const uniqueDonors = new Set(project.dons.map(don => don.donateur.id)).size;
+
+//     const transformedProject = {
+//       id: project.id,
+//       reference: project.reference,
+//       titre: project.titre,
+//       description: project.description,
+//       categorie: project.categorie,
+//       photos: project.photos,
+//       datePublication: project.datePublication?.toISOString() || project.createdAt.toISOString(),
+//       dateDebut: project.dateDebut?.toISOString(),
+//       dateFin: project.dateFin?.toISOString(),
+//       createdAt: project.createdAt.toISOString(),
+//       updatedAt: project.updatedAt.toISOString(),
+//       auteur: project.auteur,
+//       etablissement: project.etablissement,
+//       dons: project.dons.map(don => ({
+//         id: don.id,
+//         libelle: don.libelle,
+//         type: don.type,
+//         quantite: don.quantite,
+//         statut: don.statut,
+//         dateEnvoi: don.dateEnvoi?.toISOString(),
+//         dateReception: don.dateReception?.toISOString(),
+//         createdAt: don.createdAt.toISOString(),
+//         donateur: don.donateur
+//       })),
+//       stats: {
+//         donCount: project._count.dons,
+//         totalRaised,
+//         uniqueDonors
+//       }
+//     };
+
+//     return NextResponse.json({ project: transformedProject });
+
+//   } catch (error) {
+//     console.error("GET /api/projects/[id] error:", error);
+//     return NextResponse.json({ error: "Server error" }, { status: 500 });
+//   }
+// }
+
+// // PUT - Modifier un projet
+// export async function PUT(
+//   req: Request,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const cookieStore = await cookies();
+//     const token = cookieStore.get("token")?.value;
+    
+//     if (!token) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+//       userId: string;
+//       role: string;
+//       type: string;
+//     };
+
+//     // Vérifier que l'utilisateur est de type ETABLISSEMENT
+//     if (payload.type !== "ETABLISSEMENT") {
+//       return NextResponse.json({ 
+//         error: "Seuls les profils ÉTABLISSEMENT peuvent modifier des projets" 
+//       }, { status: 403 });
+//     }
+
+//     // CORRECTION: Attendre params avant de l'utiliser
+//     const resolvedParams = await params;
+
+//     // Schéma de validation pour la modification
+//     const updateProjectSchema = z.object({
+//       title: z.string().min(10, "Le titre doit contenir au moins 10 caractères").optional(),
+//       description: z.string().min(50, "La description doit contenir au moins 50 caractères").optional(),
+//       category: z.enum(["CONSTRUCTION", "REHABILITATION", "AUTRES"]).optional(),
+//       startDate: z.string().optional(),
+//       endDate: z.string().optional(),
+//       photos: z.array(z.string()).optional(),
+//     }).refine((data) => {
+//       // Validation des dates si les deux sont fournies
+//       if (data.startDate && data.endDate) {
+//         const start = new Date(data.startDate);
+//         const end = new Date(data.endDate);
+//         return start < end;
+//       }
+//       return true;
+//     }, {
+//       message: "La date de fin doit être postérieure à la date de début",
+//       path: ["endDate"]
+//     });
+
+//     const body = await req.json();
+//     const validation = updateProjectSchema.safeParse(body);
+
+//     if (!validation.success) {
+//       return NextResponse.json({ 
+//         error: "Données invalides",
+//         details: validation.error.flatten()
+//       }, { status: 400 });
+//     }
+
+//     const data = validation.data;
+
+//     // Vérifier que le projet existe et appartient à l'utilisateur
+//     const existingProject = await prisma.project.findFirst({
+//       where: {
+//         id: resolvedParams.id,
+//         auteurId: payload.userId
+//       }
+//     });
+
+//     if (!existingProject) {
+//       return NextResponse.json({ 
+//         error: "Projet non trouvé ou vous n'avez pas les permissions" 
+//       }, { status: 404 });
+//     }
+
+//     // Préparer les données de mise à jour
+//     const updateData: any = {};
+//     if (data.title) updateData.titre = data.title;
+//     if (data.description) updateData.description = data.description;
+//     if (data.category) updateData.categorie = data.category;
+//     if (data.startDate !== undefined) updateData.dateDebut = data.startDate ? new Date(data.startDate) : null;
+//     if (data.endDate !== undefined) updateData.dateFin = data.endDate ? new Date(data.endDate) : null;
+//     if (data.photos) updateData.photos = data.photos;
+
+//     // Mettre à jour le projet
+//     const updatedProject = await prisma.project.update({
+//       where: { id: resolvedParams.id },
+//       data: updateData,
+//       include: {
+//         auteur: {
+//           select: {
+//             fullName: true,
+//             avatar: true
+//           }
+//         },
+//         etablissement: {
+//           select: {
+//             nom: true,
+//             type: true,
+//             niveau: true
+//           }
+//         }
+//       }
+//     });
+
+//     return NextResponse.json({ 
+//       message: "Projet modifié avec succès",
+//       project: updatedProject 
+//     });
+
+//   } catch (error) {
+//     console.error("PUT /api/projects/[id] error:", error);
+//     return NextResponse.json({ error: "Server error" }, { status: 500 });
+//   }
+// }
+
+// app/api/projects/[id]/route.ts
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+export const runtime = "nodejs";
+
+// GET - Récupérer un projet spécifique
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: string;
+      role: string;
+      type: string;
+    };
+
+    // CORRECTION: Attendre params avant de l'utiliser
+    const resolvedParams = await params;
+    
+    if (!resolvedParams?.id) {
+      return NextResponse.json({ error: "ID du projet manquant" }, { status: 400 });
+    }
 
     const project = await prisma.project.findUnique({
-      where: { id },
+      where: { id: resolvedParams.id },
       include: {
         auteur: {
           select: {
@@ -54,115 +322,154 @@ export async function GET(request, { params }) {
     });
 
     if (!project) {
-      return NextResponse.json(
-        { success: false, error: 'Projet non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Projet non trouvé" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: project
-    });
+    // Calculer les statistiques
+    const totalRaised = project.dons
+      .filter(don => don.statut === 'RECEPTIONNE')
+      .reduce((sum, don) => sum + 0, 0); // À adapter selon votre logique de calcul
+
+    const uniqueDonors = new Set(project.dons.map(don => don.donateur.id)).size;
+
+    const transformedProject = {
+      id: project.id,
+      reference: project.reference,
+      titre: project.titre,
+      description: project.description,
+      categorie: project.categorie,
+      photos: project.photos,
+      datePublication: project.datePublication?.toISOString() || project.createdAt.toISOString(),
+      dateDebut: project.dateDebut?.toISOString(),
+      dateFin: project.dateFin?.toISOString(),
+      createdAt: project.createdAt.toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
+      auteur: project.auteur,
+      etablissement: project.etablissement,
+      dons: project.dons.map(don => ({
+        id: don.id,
+        libelle: don.libelle,
+        type: don.type,
+        quantite: don.quantite,
+        statut: don.statut,
+        dateEnvoi: don.dateEnvoi?.toISOString(),
+        dateReception: don.dateReception?.toISOString(),
+        createdAt: don.createdAt.toISOString(),
+        donateur: don.donateur
+      })),
+      stats: {
+        donCount: project._count.dons,
+        totalRaised,
+        uniqueDonors
+      }
+    };
+
+    return NextResponse.json({ project: transformedProject });
 
   } catch (error) {
-    console.error('Erreur lors de la récupération du projet:', error);
-    return NextResponse.json(
-      { success: false, error: 'Erreur serveur' },
-      { status: 500 }
-    );
+    console.error("GET /api/projects/[id] error:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
-// PUT - Mettre à jour un projet
-export async function PUT(request, { params }) {
+// PUT - Modifier un projet
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
-    const formData = await request.formData();
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Vérifier que le projet existe
-    const existingProject = await prisma.project.findUnique({
-      where: { id },
-      include: { auteur: true }
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: string;
+      role: string;
+      type: string;
+    };
+
+    // Vérifier que l'utilisateur est de type ETABLISSEMENT
+    if (payload.type !== "ETABLISSEMENT") {
+      return NextResponse.json({ 
+        error: "Seuls les profils ÉTABLISSEMENT peuvent modifier des projets" 
+      }, { status: 403 });
+    }
+
+    // CORRECTION: Attendre params avant de l'utiliser
+    const resolvedParams = await params;
+
+    // Schéma de validation pour la modification
+    const updateProjectSchema = z.object({
+      title: z.string().min(10, "Le titre doit contenir au moins 10 caractères").optional(),
+      description: z.string().min(50, "La description doit contenir au moins 50 caractères").optional(),
+      category: z.enum(["CONSTRUCTION", "REHABILITATION", "AUTRES"]).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      photos: z.array(z.string()).optional(),
+    }).refine((data) => {
+      // Validation des dates si les deux sont fournies
+      if (data.startDate && data.endDate) {
+        const start = new Date(data.startDate);
+        const end = new Date(data.endDate);
+        return start < end;
+      }
+      return true;
+    }, {
+      message: "La date de fin doit être postérieure à la date de début",
+      path: ["endDate"]
+    });
+
+    const body = await req.json();
+    const validation = updateProjectSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: "Données invalides",
+        details: validation.error.flatten()
+      }, { status: 400 });
+    }
+
+    const data = validation.data;
+
+    // Vérifier que le projet existe et appartient à l'utilisateur connecté
+    const existingProject = await prisma.project.findFirst({
+      where: {
+        id: resolvedParams.id,
+        auteurId: payload.userId // VÉRIFICATION : seul l'auteur peut modifier
+      }
     });
 
     if (!existingProject) {
-      return NextResponse.json(
-        { success: false, error: 'Projet non trouvé' },
-        { status: 404 }
-      );
+      return NextResponse.json({ 
+        error: "Projet non trouvé ou vous n'avez pas les permissions pour le modifier" 
+      }, { status: 403 }); // 403 Forbidden au lieu de 404
     }
 
-    // Vérifier les permissions (seul l'auteur ou un admin peut modifier)
-    const userId = formData.get('userId');
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user || (existingProject.auteurId !== userId && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
-      return NextResponse.json(
-        { success: false, error: 'Permissions insuffisantes' },
-        { status: 403 }
-      );
-    }
-
-    // Extraction des données à mettre à jour
-    const updateData = {
-      titre: formData.get('title') || existingProject.titre,
-      description: formData.get('description') || existingProject.description,
-      categorie: formData.get('category')?.toUpperCase() || existingProject.categorie,
-      dateDebut: formData.get('startDate') ? new Date(formData.get('startDate')) : existingProject.dateDebut,
-      dateFin: formData.get('endDate') ? new Date(formData.get('endDate')) : existingProject.dateFin
-    };
-
-    // Traitement des nouvelles photos si fournies
-    const photoFiles = formData.getAll('photos');
-    if (photoFiles.length > 0 && photoFiles[0].size > 0) {
-      // Supprimer les anciennes photos
-      for (const oldPhoto of existingProject.photos) {
-        try {
-          const oldPhotoPath = path.join(process.cwd(), 'public', oldPhoto);
-          await unlink(oldPhotoPath);
-        } catch (error) {
-          console.log('Erreur lors de la suppression de l\'ancienne photo:', error);
-        }
-      }
-
-      // Ajouter les nouvelles photos
-      const newPhotos = [];
-      const uploadDir = path.join(process.cwd(), 'public/uploads/projects');
-      
-      for (const file of photoFiles) {
-        if (file.size > 0) {
-          const bytes = await file.arrayBuffer();
-          const buffer = Buffer.from(bytes);
-          
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
-          const filePath = path.join(uploadDir, fileName);
-          
-          await writeFile(filePath, buffer);
-          newPhotos.push(`/uploads/projects/${fileName}`);
-        }
-      }
-      
-      updateData.photos = newPhotos;
-    }
+    // Préparer les données de mise à jour
+    const updateData: any = {};
+    if (data.title) updateData.titre = data.title;
+    if (data.description) updateData.description = data.description;
+    if (data.category) updateData.categorie = data.category;
+    if (data.startDate !== undefined) updateData.dateDebut = data.startDate ? new Date(data.startDate) : null;
+    if (data.endDate !== undefined) updateData.dateFin = data.endDate ? new Date(data.endDate) : null;
+    if (data.photos) updateData.photos = data.photos;
 
     // Mettre à jour le projet
     const updatedProject = await prisma.project.update({
-      where: { id },
+      where: { id: resolvedParams.id },
       data: updateData,
       include: {
         auteur: {
           select: {
-            id: true,
             fullName: true,
             avatar: true
           }
         },
         etablissement: {
           select: {
-            id: true,
             nom: true,
             type: true,
             niveau: true
@@ -171,89 +478,13 @@ export async function PUT(request, { params }) {
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      data: updatedProject,
-      message: 'Projet mis à jour avec succès'
+    return NextResponse.json({ 
+      message: "Projet modifié avec succès",
+      project: updatedProject 
     });
 
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du projet:', error);
-    return NextResponse.json(
-      { success: false, error: 'Erreur lors de la mise à jour' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Supprimer un projet
-export async function DELETE(request, { params }) {
-  try {
-    const { id } = params;
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    // Vérifier que le projet existe
-    const existingProject = await prisma.project.findUnique({
-      where: { id },
-      include: { 
-        auteur: true,
-        dons: true 
-      }
-    });
-
-    if (!existingProject) {
-      return NextResponse.json(
-        { success: false, error: 'Projet non trouvé' },
-        { status: 404 }
-      );
-    }
-
-    // Vérifier les permissions
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user || (existingProject.auteurId !== userId && user.role !== 'ADMIN' && user.role !== 'SUPERADMIN')) {
-      return NextResponse.json(
-        { success: false, error: 'Permissions insuffisantes' },
-        { status: 403 }
-      );
-    }
-
-    // Vérifier s'il y a des dons associés
-    if (existingProject.dons.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'Impossible de supprimer un projet qui a reçu des dons' },
-        { status: 400 }
-      );
-    }
-
-    // Supprimer les photos du serveur
-    for (const photo of existingProject.photos) {
-      try {
-        const photoPath = path.join(process.cwd(), 'public', photo);
-        await unlink(photoPath);
-      } catch (error) {
-        console.log('Erreur lors de la suppression de la photo:', error);
-      }
-    }
-
-    // Supprimer le projet
-    await prisma.project.delete({
-      where: { id }
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Projet supprimé avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la suppression du projet:', error);
-    return NextResponse.json(
-      { success: false, error: 'Erreur lors de la suppression' },
-      { status: 500 }
-    );
+    console.error("PUT /api/projects/[id] error:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

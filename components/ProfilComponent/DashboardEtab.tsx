@@ -202,6 +202,7 @@ import type { FrontUser } from "@/lib/hooks/useCurrentUser";
 import Link from "next/link";
 import { useUserProjects } from "@/lib/hooks/useUserProjects";
 import { useState } from "react";
+import HeaderWithDropdown from "@/components/Header";
 
 export default function EtabDashboard({ user }: { user: FrontUser }) {
   const etab = user.etablissement;
@@ -264,7 +265,7 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
+      {/* <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-rose-400 to-teal-400 text-white font-bold grid place-items-center">
@@ -298,8 +299,8 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
             </div>
           </div>
         </div>
-      </header>
-
+      </header> */}
+        <HeaderWithDropdown user={user} userType="etablissement"/>
       {/* 3 colonnes */}
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         {/* Colonne gauche */}
