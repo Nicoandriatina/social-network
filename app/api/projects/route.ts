@@ -1,14 +1,3 @@
-// import { NextResponse } from "next/server";
-// import { requirePermission } from "@/lib/auth";
-
-// export async function POST(req: Request) {
-//   const gate = await requirePermission("projet:create");
-//   if (!gate.ok) return NextResponse.json({ error: gate.reason }, { status: gate.status });
-
-//   // ... créer le projet pour l’établissement du user gate.auth.id si besoin
-//   return NextResponse.json({ ok: true });
-// }
-
 // app/api/projects/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";

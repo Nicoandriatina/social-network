@@ -265,41 +265,6 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
       {/* Header */}
-      {/* <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-rose-400 to-teal-400 text-white font-bold grid place-items-center">
-              MSN
-            </div>
-            <div>
-              <div className="font-semibold">Mada Social Network</div>
-              <div className="text-xs text-slate-500">Tableau de bord</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button className="relative rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              🔔 <span className="absolute -top-1 -right-1 text-xs bg-red-500 text-white rounded-full w-5 h-5 grid place-items-center">3</span>
-            </button>
-            <div className="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-slate-50">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 text-white grid place-items-center font-semibold">
-                {etab?.nom?.slice(0,2).toUpperCase() ?? user.nom.slice(0,2).toUpperCase()}
-              </div>
-              <div className="text-sm">
-                <div className="font-semibold truncate max-w-[180px]">
-                  {etab?.nom ?? user.nom}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {etab ? `${etab.type ?? ""}` : user.typeProfil}
-                </div>
-              </div>
-              <Link href="dashboard/edit">
-                <span>⚙️</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header> */}
         <HeaderWithDropdown user={user} userType="etablissement"/>
       {/* 3 colonnes */}
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">

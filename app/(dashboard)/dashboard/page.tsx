@@ -1,15 +1,3 @@
-// // app/dashboard/page.tsx (Server Component)
-// import DashboardClient from "@/components/DashboardClient";
-// import { getUserFromServer } from "@/lib/auth";
-// import { redirect } from "next/navigation";
-
-
-// export default async function DashboardPage() {
-//   const user = await getUserFromServer();
-//   if (!user) redirect("/login");
-//   // if (!user.isProfileComplete) redirect("/complete-profile");
-//   return <DashboardClient user={user} />;
-// }
 // app/dashboard/page.tsx
 "use client";
 
