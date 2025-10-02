@@ -1,4 +1,4 @@
-// ✅ PRISMA SCHEMA avec optimisation pour app Mada Social Network
+// ✅ PRISMA SCHEMA avec optimisation pour app Mada Social Network + Notifications
 
 generator client {
   provider = "prisma-client-js"
@@ -53,6 +53,15 @@ enum DonStatus {
   EN_ATTENTE
 }
 
+enum NotificationType {
+  MESSAGE
+  FRIEND_REQUEST
+  FRIEND_ACCEPT
+  PROJECT_COMMENT
+  DONATION_RECEIVED
+  PROJECT_PUBLISHED
+}
+
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
@@ -95,6 +104,10 @@ model User {
 
   messagesEnvoyes Message[]  @relation("MessageFrom")
   messagesRecus   Message[]  @relation("MessageTo")
+
+  // 🔥 NOUVELLES RELATIONS NOTIFICATIONS
+  notifications         Notification[] @relation("UserNotifications")
+  triggeredNotifications Notification[] @relation("NotificationTrigger")
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -158,6 +171,9 @@ model Project {
 
   dons             Don[]
 
+  // 🔥 NOUVELLE RELATION
+  notifications    Notification[]
+
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
@@ -186,11 +202,14 @@ model Don {
 
   transaction      Transaction?
 
-  montant          Float?      // Ajout de la colonne montant
+  montant          Float?
 
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
-  activityLogs DonationActivityLog[]
+  activityLogs     DonationActivityLog[]
+  
+  // 🔥 NOUVELLE RELATION
+  notifications    Notification[]
 }
 
 model FriendRequest {
@@ -201,6 +220,9 @@ model FriendRequest {
   toId      String
   accepted  Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  // 🔥 NOUVELLE RELATION
+  notifications Notification[]
 }
 
 model Message {
@@ -212,10 +234,54 @@ model Message {
   toId      String
   sentAt    DateTime @default(now())
   read      Boolean  @default(false)  
-  readAt    DateTime? 
+  readAt    DateTime?
+
+  // 🔥 NOUVELLE RELATION
+  notifications Notification[]
 
   @@index([fromId, toId])
   @@index([toId, read])                
+}
+
+// 🔥 NOUVEAU MODÈLE NOTIFICATION
+model Notification {
+  id            String   @id @default(cuid())
+  
+  // Destinataire de la notification
+  userId        String
+  user          User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Informations de la notification
+  type          NotificationType
+  title         String
+  content       String
+  
+  // Statut de lecture
+  read          Boolean  @default(false)
+  readAt        DateTime?
+  createdAt     DateTime @default(now())
+  
+  // Utilisateur qui a déclenché la notification (expéditeur, auteur, etc.)
+  relatedUserId String?
+  relatedUser   User?    @relation("NotificationTrigger", fields: [relatedUserId], references: [id], onDelete: Cascade)
+  
+  // Références optionnelles selon le type de notification
+  messageId       String?
+  message         Message?       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  friendRequestId String?
+  friendRequest   FriendRequest? @relation(fields: [friendRequestId], references: [id], onDelete: Cascade)
+  
+  projectId       String?
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  donId           String?
+  don             Don?           @relation(fields: [donId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("notifications")
 }
 
 model Transaction {
@@ -236,12 +302,11 @@ model DonationActivityLog {
   id          String   @id @default(cuid())
   donationId  String
   userId      String
-  action      String   // CREATED, STATUS_UPDATED, COMMENT_ADDED, etc.
-  description String   // Description lisible de l'action
-  metadata    Json?    // Données supplémentaires (ancien/nouveau statut, etc.)
+  action      String
+  description String
+  metadata    Json?
   createdAt   DateTime @default(now())
 
-  // Relations
   donation    Don      @relation(fields: [donationId], references: [id], onDelete: Cascade)
   user        User     @relation("UserActivities", fields: [userId], references: [id])
 
