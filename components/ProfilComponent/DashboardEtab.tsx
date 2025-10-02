@@ -574,7 +574,7 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
                       <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-200">
                         <div className="flex items-center gap-4 text-sm">
                           <span className="flex items-center gap-1 text-indigo-600 font-semibold">
-                            👥 {project.donCount} donateur{project.donCount > 1 ? 's' : ''}
+                            👥 {project.donCount} Donation{project.donCount > 1 ? 's' : ''}
                           </span>
                           <span className="flex items-center gap-1 text-green-600 font-semibold">
                             💰 {formatAmount(project.totalRaised)} Ar
@@ -657,7 +657,7 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
               ["📝", "Mes Projets", () => setActiveTab("projets")],
               ["💰", "Donations Reçues", () => setActiveTab("donations")],
               ["👥", "Mon Équipe", null],
-              ["💬", "Messages", null],
+              ["💬", "Messages", () => window.location.href ="dashboard/messages"],
               ["📊", "Statistiques", null],
               ["⚙️", "Paramètres", null ],
             ].map(([icon, label, onClick], i) => (
@@ -828,12 +828,27 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="font-semibold mb-3">⚡ Actions rapides</div>
             <div className="flex flex-col gap-2">
-              <Link href="/projects/new" className="btn-primary px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center">
-                📝 Nouveau projet
+              <Link 
+                  href="/projects/new" 
+                  className="px-4 py-2 rounded-xl border-2 border-slate-300 text-slate-700 text-center transition-all duration-300 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600 hover:text-white hover:border-transparent hover:shadow-lg"
+                >
+                  📝 Nouveau projet
               </Link>
-              <button className="px-4 py-2 rounded-xl border border-slate-300">👥 Inviter un enseignant</button>
-              <button className="px-4 py-2 rounded-xl border border-slate-300">📊 Voir rapports</button>
-              <button className="px-4 py-2 rounded-xl border border-slate-300">💬 Contacter support</button>
+              <Link 
+                href="/dashboard/friends"
+                
+                  className="px-4 py-2 rounded-xl border-2 border-slate-300 text-slate-700 text-center transition-all duration-300 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600 hover:text-white hover:border-transparent hover:shadow-lg"
+                >
+                
+                  👥 Inviter un enseignant
+                
+              </Link>
+                <button className="px-4 py-2 rounded-xl border-2 border-slate-300 text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600 hover:text-white hover:border-transparent hover:shadow-lg">
+                  📊 Voir rapports
+                </button>
+                <button className="px-4 py-2 rounded-xl border-2 border-slate-300 text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600 hover:text-white hover:border-transparent hover:shadow-lg">
+                  💬 Contacter support
+                </button>
             </div>
           </div>
         </aside>

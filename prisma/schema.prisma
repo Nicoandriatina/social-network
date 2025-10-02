@@ -89,6 +89,7 @@ model User {
   donsFaits      Don[]         @relation("Donateur")
   donsRecus      Don[]         @relation("BeneficiairePersonnel")
 
+  activities  DonationActivityLog[] @relation("UserActivities")
   adminEtablissement Etablissement[] @relation("AdminEtablissement")
   transactionsEffectuees Transaction[] @relation("AdminTransactions")
 
@@ -189,6 +190,7 @@ model Don {
 
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
+  activityLogs DonationActivityLog[]
 }
 
 model FriendRequest {
@@ -209,6 +211,11 @@ model Message {
   to        User     @relation("MessageTo", fields: [toId], references: [id])
   toId      String
   sentAt    DateTime @default(now())
+  read      Boolean  @default(false)  
+  readAt    DateTime? 
+
+  @@index([fromId, toId])
+  @@index([toId, read])                
 }
 
 model Transaction {
@@ -223,4 +230,23 @@ model Transaction {
   adminId        String
 
   createdAt      DateTime @default(now())
+}
+
+model DonationActivityLog {
+  id          String   @id @default(cuid())
+  donationId  String
+  userId      String
+  action      String   // CREATED, STATUS_UPDATED, COMMENT_ADDED, etc.
+  description String   // Description lisible de l'action
+  metadata    Json?    // Données supplémentaires (ancien/nouveau statut, etc.)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  donation    Don      @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserActivities", fields: [userId], references: [id])
+
+  @@map("donation_activity_logs")
+  @@index([donationId])
+  @@index([userId])
+  @@index([createdAt])
 }

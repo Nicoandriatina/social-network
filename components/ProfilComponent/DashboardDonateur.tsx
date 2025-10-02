@@ -868,51 +868,60 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
           </div>
 
           {/* Menu */}
-          <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
-            <ul className="space-y-1 text-sm">
-              <li>
-                <button 
-                  onClick={() => setActiveTab("dons")}
-                  className={`w-full text-left px-3 py-2 rounded-xl transition-colors ${
-                    activeTab === "dons" 
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" 
-                      : "hover:bg-slate-50"
-                  }`}
-                >
-                  💝 Mes dons
+         <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+          <ul className="space-y-1 text-sm">
+            <li>
+              <button 
+                onClick={() => setActiveTab("dons")}
+                className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
+                  activeTab === "dons" 
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
+                    : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
+                }`}
+              >
+                💝 Mes dons
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => setActiveTab("projets")}
+                className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
+                  activeTab === "projets" 
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
+                    : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
+                }`}
+              >
+                🧩 Projets suivis
+              </button>
+            </li>
+            <li>
+              <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                ⭐ Favoris
+              </button>
+            </li>
+            <li>
+              <Link href="/dashboard/friends" className="block">
+                <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                  👥 Mes amis
                 </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => setActiveTab("projets")}
-                  className={`w-full text-left px-3 py-2 rounded-xl transition-colors ${
-                    activeTab === "projets" 
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white" 
-                      : "hover:bg-slate-50"
-                  }`}
-                >
-                  🧩 Projets suivis
-                </button>
-              </li>
-              <li>
-                <button className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50">
-                  ⭐ Favoris
-                </button>
-              </li>
-              <li>
-                <button className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50">
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/messages" className="block">
+                <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
                   💬 Messages
                 </button>
-              </li>
-              <li>
-                <Link href="dashboard/edit">
-                  <button className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50">
-                    ⚙️ Paramètres
-                  </button>
-                </Link>
-              </li>
-            </ul>
-          </nav>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/edit" className="block">
+                <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                  ⚙️ Paramètres
+                </button>
+              </Link>
+            </li>
+          </ul>
+        </nav>
         </aside>
 
         {/* MAIN FEED */}

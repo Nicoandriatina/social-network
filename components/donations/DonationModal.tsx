@@ -725,8 +725,12 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
         libelle: formData.libelle.trim(),
         type: formData.type,
         // Pour les dons monétaires, utiliser le montant. Pour les autres, utiliser la quantité
-        montant: formData.type === 'MONETAIRE' ? parseFloat(formData.montant) : null,
-        quantite: (formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') ? parseInt(formData.quantite) : null,
+        montant: formData.type === 'MONETAIRE' && formData.montant 
+              ? parseFloat(formData.montant) 
+              : undefined,
+        quantite: (formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') && formData.quantite
+              ? parseInt(formData.quantite)
+              : undefined,
         photos: formData.photos.map(photo => photo.base64),
         // Destination selon le type - s'assurer qu'une seule destination est définie
         ...(formData.destinationType === 'project' && formData.destinationId && { 

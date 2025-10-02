@@ -118,9 +118,11 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                 </button>
               </li>
               <li>
-                <button className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50">
-                  💬 Messages
-                </button>
+                <Link href="/dashboard/messages">
+                  <button className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-50">
+                    💬 Messages
+                  </button>
+                </Link>
               </li>
               <li>
                 <Link href="dashboard/edit">

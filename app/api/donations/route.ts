@@ -1,9 +1,10 @@
-// // app/api/donations/route.ts
+
 // import { NextResponse } from "next/server";
 // import { cookies } from "next/headers";
 // import jwt from "jsonwebtoken";
 // import { prisma } from "@/lib/prisma";
 // import { z } from "zod";
+// import { DonationActivityLogger } from "@/lib/services/donationActivityLogger";
 
 // export const runtime = "nodejs";
 
@@ -13,6 +14,7 @@
 //   type: z.enum(["MONETAIRE", "VIVRES", "NON_VIVRES"], {
 //     required_error: "Le type de don est obligatoire"
 //   }),
+//   montant: z.number().positive().optional(),
 //   quantite: z.number().nullable().optional(),
 //   photos: z.array(z.string()).optional(),
 //   // Destination du don (un seul requis)
@@ -30,9 +32,20 @@
 // }, {
 //   message: "Vous devez spécifier exactement une destination pour le don",
 //   path: ["destination"]
+// }).refine((data) => {
+//   // Validation selon le type de don
+//   if (data.type === "MONETAIRE") {
+//     return data.montant && data.montant > 0;
+//   } else if (data.type === "VIVRES" || data.type === "NON_VIVRES") {
+//     return data.quantite && data.quantite > 0;
+//   }
+//   return true;
+// }, {
+//   message: "Le montant est obligatoire pour les dons monétaires, la quantité pour les autres types",
+//   path: ["amount"]
 // });
 
-// // POST - Créer un nouveau don
+// // POST - Créer un nouveau don avec logging automatique
 // export async function POST(req: Request) {
 //   try {
 //     const cookieStore = await cookies();
@@ -56,12 +69,12 @@
 //     }
 
 //     const body = await req.json();
-//     console.log("Données reçues dans l'API:", body); // Debug
+//     console.log("Données reçues dans l'API:", body);
     
 //     // Validation des données
 //     const validation = createDonationSchema.safeParse(body);
 //     if (!validation.success) {
-//       console.log("Erreur de validation:", validation.error.flatten()); // Debug
+//       console.log("Erreur de validation:", validation.error.flatten());
 //       return NextResponse.json({ 
 //         error: "Données invalides",
 //         details: validation.error.flatten()
@@ -69,7 +82,7 @@
 //     }
 
 //     const data = validation.data;
-//     console.log("Données validées:", data); // Debug
+//     console.log("Données validées:", data);
 
 //     // Vérifier que la destination existe
 //     if (data.projectId) {
@@ -109,16 +122,19 @@
 //       data: {
 //         libelle: data.libelle,
 //         type: data.type,
+//         montant: data.montant || null,
 //         quantite: data.quantite || null,
 //         photos: data.photos || [],
 //         statut: 'EN_ATTENTE',
 //         donateurId: payload.userId,
-//         // Définir la destination
 //         projectId: data.projectId || null,
 //         etablissementId: data.etablissementId || null,
 //         personnelId: data.personnelId || null,
 //       },
 //       include: {
+//         donateur: {
+//           select: { fullName: true }
+//         },
 //         project: {
 //           select: {
 //             titre: true,
@@ -136,14 +152,24 @@
 //       }
 //     });
 
-//     console.log("Don créé avec succès:", don); // Debug
+//     console.log("Don créé avec succès:", don);
+
+//     // Enregistrer l'action dans l'historique
+//     await DonationActivityLogger.logDonationCreated(don.id, payload.userId, {
+//       libelle: data.libelle,
+//       type: data.type,
+//       montant: data.montant,
+//       quantite: data.quantite,
+//       donateurName: don.donateur.fullName,
+//       destinationType: don.projectId ? 'projet' : don.etablissementId ? 'établissement' : 'personnel'
+//     });
 
 //     return NextResponse.json({ 
 //       message: "Don créé avec succès",
 //       donation: don 
 //     }, { status: 201 });
 
-//   } catch (error) {
+//   } catch (error: any) {
 //     console.error("POST /api/donations error:", error);
     
 //     // Gestion des erreurs Prisma
@@ -206,13 +232,14 @@
 //       id: don.id,
 //       libelle: don.libelle,
 //       type: don.type,
+//       montant: don.montant,
 //       quantite: don.quantite,
 //       statut: don.statut,
 //       photos: don.photos,
 //       createdAt: don.createdAt.toISOString(),
 //       dateEnvoi: don.dateEnvoi?.toISOString(),
 //       dateReception: don.dateReception?.toISOString(),
-//       donateurId: don.donateurId, // Ajout pour le composant DonationStatusManager
+//       donateurId: don.donateurId,
 //       projectId: don.projectId,
 //       etablissementId: don.etablissementId,
 //       personnelId: don.personnelId,
@@ -230,13 +257,12 @@
 //     return NextResponse.json({ error: "Server error" }, { status: 500 });
 //   }
 // }
-
-// const transformedDonations = donations.map(don =>// app/api/donations/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { DonationActivityLogger } from "@/lib/services/donationActivityLogger";
 
 export const runtime = "nodejs";
 
@@ -246,7 +272,7 @@ const createDonationSchema = z.object({
   type: z.enum(["MONETAIRE", "VIVRES", "NON_VIVRES"], {
     required_error: "Le type de don est obligatoire"
   }),
-  montant: z.number().positive().optional(), // Nouveau champ pour les dons monétaires
+  montant: z.number().positive().optional(),
   quantite: z.number().nullable().optional(),
   photos: z.array(z.string()).optional(),
   // Destination du don (un seul requis)
@@ -277,7 +303,7 @@ const createDonationSchema = z.object({
   path: ["amount"]
 });
 
-// POST - Créer un nouveau don
+// POST - Créer un nouveau don avec logging automatique
 export async function POST(req: Request) {
   try {
     const cookieStore = await cookies();
@@ -301,12 +327,12 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    console.log("Données reçues dans l'API:", body); // Debug
+    console.log("Données reçues dans l'API:", body);
     
     // Validation des données
     const validation = createDonationSchema.safeParse(body);
     if (!validation.success) {
-      console.log("Erreur de validation:", validation.error.flatten()); // Debug
+      console.log("Erreur de validation:", validation.error.flatten());
       return NextResponse.json({ 
         error: "Données invalides",
         details: validation.error.flatten()
@@ -314,7 +340,7 @@ export async function POST(req: Request) {
     }
 
     const data = validation.data;
-    console.log("Données validées:", data); // Debug
+    console.log("Données validées:", data);
 
     // Vérifier que la destination existe
     if (data.projectId) {
@@ -354,17 +380,19 @@ export async function POST(req: Request) {
       data: {
         libelle: data.libelle,
         type: data.type,
-        montant: data.montant || null, // Nouveau champ montant
+        montant: data.montant || null,
         quantite: data.quantite || null,
         photos: data.photos || [],
         statut: 'EN_ATTENTE',
         donateurId: payload.userId,
-        // Définir la destination
         projectId: data.projectId || null,
         etablissementId: data.etablissementId || null,
         personnelId: data.personnelId || null,
       },
       include: {
+        donateur: {
+          select: { fullName: true }
+        },
         project: {
           select: {
             titre: true,
@@ -382,14 +410,24 @@ export async function POST(req: Request) {
       }
     });
 
-    console.log("Don créé avec succès:", don); // Debug
+    console.log("Don créé avec succès:", don);
+
+    // Enregistrer l'action dans l'historique
+    await DonationActivityLogger.logDonationCreated(don.id, payload.userId, {
+      libelle: data.libelle,
+      type: data.type,
+      montant: data.montant,
+      quantite: data.quantite,
+      donateurName: don.donateur.fullName,
+      destinationType: don.projectId ? 'projet' : don.etablissementId ? 'établissement' : 'personnel'
+    });
 
     return NextResponse.json({ 
       message: "Don créé avec succès",
       donation: don 
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/donations error:", error);
     
     // Gestion des erreurs Prisma
@@ -452,14 +490,14 @@ export async function GET() {
       id: don.id,
       libelle: don.libelle,
       type: don.type,
-      montant: don.montant, // Inclure le montant pour les calculs
+      montant: don.montant,
       quantite: don.quantite,
       statut: don.statut,
       photos: don.photos,
       createdAt: don.createdAt.toISOString(),
       dateEnvoi: don.dateEnvoi?.toISOString(),
       dateReception: don.dateReception?.toISOString(),
-      donateurId: don.donateurId, // Ajout pour le composant DonationStatusManager
+      donateurId: don.donateurId,
       projectId: don.projectId,
       etablissementId: don.etablissementId,
       personnelId: don.personnelId,
