@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import React from "react";
-import HeaderWithDropdown from "../Header";
 
 type EnseignantDashboardProps = {
   user: {
@@ -41,8 +40,6 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
-      {/* Header */}
-         <HeaderWithDropdown user={user} userType="enseignant"/>
       {/* 3 colonnes */}
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         {/* LEFT SIDEBAR */}

@@ -108,7 +108,12 @@ model User {
   // 🔥 NOUVELLES RELATIONS NOTIFICATIONS
   notifications         Notification[] @relation("UserNotifications")
   triggeredNotifications Notification[] @relation("NotificationTrigger")
-
+  
+  //ajout des nouveau fonctionalite dans page d'acceuil
+  projectLikes    ProjectLike[]    @relation("UserProjectLikes")
+  projectComments ProjectComment[] @relation("UserProjectComments")
+  projectShares   ProjectShare[]   @relation("UserProjectShares")
+  commentLikes CommentLike[] @relation("UserCommentLikes")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }
@@ -174,6 +179,14 @@ model Project {
   // 🔥 NOUVELLE RELATION
   notifications    Notification[]
 
+  //ajout des nouveau fonctionalite acceuil
+  likes    ProjectLike[]    @relation("ProjectLikes")
+  comments ProjectComment[] @relation("ProjectComments")
+  shares   ProjectShare[]   @relation("ProjectShares")
+  likesCount    Int @default(0)
+  commentsCount Int @default(0)
+  sharesCount   Int @default(0)
+  
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
@@ -314,4 +327,69 @@ model DonationActivityLog {
   @@index([donationId])
   @@index([userId])
   @@index([createdAt])
+}
+model ProjectLike {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation("UserProjectLikes", fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation("ProjectLikes", fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_likes")
+  @@index([createdAt])
+  @@index([projectId, createdAt])
+
+}
+
+model ProjectComment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation("UserProjectComments", fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation("ProjectComments", fields: [projectId], references: [id], onDelete: Cascade)
+  likes CommentLike[] @relation("CommentLikes")
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_comments")
+  @@index([createdAt])
+  @@index([projectId, createdAt])
+
+}
+
+model ProjectShare {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation("UserProjectShares", fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation("ProjectShares", fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_shares")
+}
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User           @relation("UserCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+  comment ProjectComment @relation("CommentLikes", fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+  @@index([userId])
+  @@map("comment_likes")
 }

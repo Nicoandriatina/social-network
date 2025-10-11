@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
+import { notifyFriendAccept } from '@/lib/notifications';
+import { emitSocketNotification } from '@/lib/emit-socket-notification';
 
 // PUT /api/friends/[requestId] - Accepter
 export async function PUT(
@@ -41,6 +43,21 @@ export async function PUT(
         }
       }
     });
+
+    // 🔔 NOTIFICATION TEMPS RÉEL
+    try {
+      const notification = await notifyFriendAccept({
+        friendRequestId: requestId,
+        accepterUserId: auth.id,
+        requesterUserId: friendRequest.fromId
+      });
+
+      if (notification) {
+        await emitSocketNotification(notification.id);
+      }
+    } catch (notifError) {
+      console.error('Erreur notification:', notifError);
+    }
 
     return NextResponse.json({ 
       message: 'Demande acceptée',

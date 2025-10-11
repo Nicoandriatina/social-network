@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { emitSocketNotification } from "@/lib/emit-socket-notification";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,8 @@ export async function PATCH(
         project: {
           select: {
             auteurId: true,
-            etablissementId: true
+            etablissementId: true,
+            titre: true
           }
         },
         beneficiaireEtab: {
@@ -79,7 +81,7 @@ export async function PATCH(
       // Seul le donateur peut marquer comme "ENVOYÉ"
       hasPermission = don.donateurId === payload.userId;
     } else if (status === "RECEPTIONNE") {
-      // Seul le bénéficiaire peut marquer comme "RECEPTIONNÉ"
+      // Seul le bénéficiaire peut marquer comme "RÉCEPTIONNÉ"
       if (don.project) {
         // Don vers un projet : l'auteur du projet peut valider
         hasPermission = don.project.auteurId === payload.userId;
@@ -134,22 +136,75 @@ export async function PATCH(
       data: updateData,
       include: {
         donateur: {
-          select: { fullName: true }
+          select: { id: true, fullName: true }
         },
         project: {
           select: {
             titre: true,
+            auteurId: true,
             etablissement: { select: { nom: true } }
           }
         },
         beneficiaireEtab: {
-          select: { nom: true }
+          select: { 
+            nom: true,
+            admin: { select: { id: true } }
+          }
         },
         beneficiairePersonnel: {
-          select: { fullName: true }
+          select: { id: true, fullName: true }
         }
       }
     });
+
+    // 🔔 NOTIFICATIONS SELON LE CHANGEMENT DE STATUT
+    try {
+      if (status === 'ENVOYE') {
+        // Notifier le bénéficiaire que le don est envoyé
+        let recipientId = null;
+        
+        if (don.project) {
+          recipientId = don.project.auteurId;
+        } else if (don.personnelId) {
+          recipientId = don.personnelId;
+        } else if (don.beneficiaireEtab) {
+          recipientId = don.beneficiaireEtab.admin[0]?.id;
+        }
+
+        if (recipientId) {
+          const notification = await prisma.notification.create({
+            data: {
+              userId: recipientId,
+              type: 'DONATION_RECEIVED',
+              title: 'Don en cours d\'acheminement',
+              content: `Le don "${don.libelle}" a été envoyé et est en cours d'acheminement`,
+              donId: don.id,
+              relatedUserId: don.donateurId
+            }
+          });
+          await emitSocketNotification(notification.id);
+          console.log('✅ Notification "don envoyé" créée et émise');
+        }
+      } 
+      else if (status === 'RECEPTIONNE') {
+        // Notifier le donateur que le don est reçu
+        const notification = await prisma.notification.create({
+          data: {
+            userId: don.donateurId,
+            type: 'DONATION_RECEIVED',
+            title: 'Don réceptionné',
+            content: `Votre don "${don.libelle}" a été reçu avec succès. Merci pour votre générosité !`,
+            donId: don.id,
+            relatedUserId: payload.userId
+          }
+        });
+        await emitSocketNotification(notification.id);
+        console.log('✅ Notification "don réceptionné" créée et émise');
+      }
+    } catch (notifError) {
+      console.error('❌ Erreur notification statut don:', notifError);
+      // On continue même si la notification échoue
+    }
 
     return NextResponse.json({ 
       message: "Statut mis à jour avec succès",
