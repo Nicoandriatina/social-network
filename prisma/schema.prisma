@@ -139,6 +139,7 @@ model Donateur {
   sector     String?
 }
 
+
 model Etablissement {
   id         String               @id @default(cuid())
   nom        String

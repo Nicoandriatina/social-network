@@ -1,3 +1,4 @@
+
 "use client";
 import type { FrontUser } from "@/lib/hooks/useCurrentUser";
 import Link from "next/link";

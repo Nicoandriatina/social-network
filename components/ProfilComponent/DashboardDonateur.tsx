@@ -14,6 +14,7 @@ type DonateurDashboardProps = {
   };
 };
 
+
 export default function DonateurDashboard({ user }: DonateurDashboardProps) {
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
   const [donations, setDonations] = useState([]);

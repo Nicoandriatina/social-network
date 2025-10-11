@@ -1496,6 +1496,7 @@ const HeaderWithDropdown = ({ user, userType = "etablissement" }) => {
                       }}
                       className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors"
                     >
+                      
                       <div className={`w-10 h-10 rounded-lg ${result.colorClass || 'bg-slate-200'} text-white grid place-items-center font-semibold`}>
                         {result.avatar || result.name?.slice(0, 2).toUpperCase()}
                       </div>

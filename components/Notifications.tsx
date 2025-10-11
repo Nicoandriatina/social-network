@@ -343,6 +343,7 @@ const NotificationsDropdown = () => {
                   setIsOpen(false);
                 }}
               >
+                
                 Voir toutes les notifications
               </button>
             </div>

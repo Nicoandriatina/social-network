@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // Récupérer les IDs des amis existants et demandes en cours
+    // Récupérer les IDs des amis existants et demandes en cours //
     const existingConnections = await prisma.friendRequest.findMany({
       where: {
         OR: [

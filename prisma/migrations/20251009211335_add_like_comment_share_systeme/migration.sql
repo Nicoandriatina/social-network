@@ -8,6 +8,7 @@ CREATE TABLE "public"."project_likes" (
     CONSTRAINT "project_likes_pkey" PRIMARY KEY ("id")
 );
 
+
 -- CreateTable
 CREATE TABLE "public"."project_comments" (
     "id" TEXT NOT NULL,

@@ -8,6 +8,7 @@ CREATE TABLE "public"."comment_likes" (
     CONSTRAINT "comment_likes_pkey" PRIMARY KEY ("id")
 );
 
+
 -- CreateIndex
 CREATE INDEX "comment_likes_commentId_idx" ON "public"."comment_likes"("commentId");
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import HeaderWithDropdown from "@/components/Header";
 import { SocketProvider } from "@/app/contexts/SocketContext";
 
+
 export default async function DashboardLayout({
   children,
 }: {

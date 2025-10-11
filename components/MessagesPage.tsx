@@ -448,6 +448,7 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                     </button>
                   </div>
 
+
                   <textarea
                     ref={textareaRef}
                     className="flex-1 min-h-[40px] max-h-[120px] px-4 py-3 border-2 border-slate-200 rounded-[20px] resize-none focus:outline-none focus:border-indigo-500 transition-colors bg-white text-sm font-normal"

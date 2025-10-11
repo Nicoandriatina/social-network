@@ -64,6 +64,7 @@ export async function GET(
           }
         });
 
+        
         return {
           id: comment.id,
           content: comment.content,

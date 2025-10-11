@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-// POST - Liker/Unliker un commentaire
+// POST - Liker/Unliker un commentair
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ projectId: string; commentId: string }> }

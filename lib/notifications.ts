@@ -1,8 +1,7 @@
 
-// ==========================================
 // HELPER NOTIFICATIONS - lib/socket-notifications.ts
 // Utilise votre Socket.IO existant
-// ==========================================
+
 
 import { prisma } from './prisma';
 import { NotificationType } from '@prisma/client';

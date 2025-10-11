@@ -60,3 +60,4 @@ export async function emitSocketNotification(notificationId: string) {
     console.error('❌ Erreur émission Socket.IO:', error);
   }
 }
+

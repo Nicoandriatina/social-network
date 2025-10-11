@@ -1,4 +1,4 @@
-// ==========================================
+=
 // API NOTIFICATIONS - app/api/notifications/mark-all-read/route.ts
 // ==========================================
 import { NextResponse } from "next/server";
