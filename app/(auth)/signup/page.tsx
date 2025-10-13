@@ -14,10 +14,15 @@ import DonateurFields from "@/components/RegisterComponent/DonateurFields";
 import { useRouter } from "next/navigation";
 
 const baseFields = z.object({
-  password: z.string().min(8, "Mot de passe trop court"),
+  email: z.string().email("Email invalide"),
+  country: z.string().min(2, "Pays requis"),
+  password: z.string().min(8, "Mot de passe trop court (min 8 caractères)"),
+  confirmPassword: z.string().min(8, "Confirmation requise"),
   fullName: z.string().min(3, "Nom complet requis"),
   phone: z.string().min(10, "Téléphone invalide"),
-  email: z.string().email("Email invalide"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"],
 });
 
 const etablissementFields = z.object({
@@ -27,11 +32,12 @@ const etablissementFields = z.object({
   foundedYear: z.coerce.number().min(1900, "Année invalide"),
 });
 
+// ✅ MODIFIÉ - etablissementId est maintenant obligatoire
 const enseignantFields = z.object({
-  school: z.string(),
-  position: z.string(),
-  experience: z.string(),
-  degree: z.string(),
+  etablissementId: z.string().min(1, "Veuillez sélectionner votre établissement"),
+  position: z.string().optional(),
+  experience: z.string().optional(),
+  degree: z.string().optional(),
 });
 
 const donateurFields = z.object({
@@ -74,6 +80,7 @@ export default function RegisterPage() {
       fullName: data.fullName,
       telephone: data.phone,
       type: data.profileType?.toUpperCase(),
+      country: data.country,
     };
 
     if (data.profileType === "etablissement") {
@@ -86,14 +93,19 @@ export default function RegisterPage() {
         nbEleves: data.studentCount,
       };
     }
+    
     if (data.profileType === "enseignant") {
+      // ✅ Ajouter l'ID de l'établissement choisi
+      payload.etablissementId = data.etablissementId;
       payload.enseignant = {
-        school: data.school,
-        position: data.position,
-        experience: data.experience,
-        degree: data.degree,
+        position: data.position || "",
+        experience: data.experience || "",
+        degree: data.degree || "",
+        validated: false,
       };
+      payload.needsValidation = true;
     }
+    
     if (data.profileType === "donateur") {
       payload.donateur = {
         donorType: data.donorType,
@@ -108,13 +120,26 @@ export default function RegisterPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Erreur lors de la création du compte");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Erreur lors de la création du compte");
+      }
 
       const result = await res.json();
-      alert("✅ Compte créé ! ID: " + result.userId);
+      
+      if (data.profileType === "enseignant") {
+        alert(
+          "✅ Compte créé avec succès!\n\n" +
+          "Votre profil est en attente de validation par votre établissement.\n" +
+          "Vous recevrez une notification une fois validé."
+        );
+      } else {
+        alert("✅ Compte créé ! Redirections vers la connexion...");
+      }
+      
       reset();
       setProfileType(null);
-      router.push("/login")
+      router.push("/login");
     } catch (err: any) {
       alert("❌ " + err.message);
     }

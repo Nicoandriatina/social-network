@@ -210,7 +210,9 @@ function mapUserForFront(dbUser: any) {
     facebook: dbUser.facebook ?? null,
     twitter: dbUser.twitter ?? null,
     whatsapp: dbUser.whatsapp ?? null,
-    isPublic: dbUser.isPublic,
+    profession: dbUser.profession ?? null,
+    isPublic: dbUser.isPublic ?? false,
+    
     etablissement: dbUser.etablissement
       ? {
           id: dbUser.etablissement.id,
@@ -221,17 +223,23 @@ function mapUserForFront(dbUser: any) {
           isPublic: dbUser.etablissement.isPublic ?? false,
         }
       : null,
+    
     enseignant: dbUser.enseignant
       ? {
           id: dbUser.enseignant.id,
-          matiere: dbUser.enseignant.matiere ?? null,
-          valideParEtab: dbUser.enseignant.isValidated ?? false,
+          school: dbUser.enseignant.school ?? null,
+          position: dbUser.enseignant.position ?? null,
+          experience: dbUser.enseignant.experience ?? null,
+          degree: dbUser.enseignant.degree ?? null,
+          validated: dbUser.enseignant.validated ?? false,
         }
       : null,
+    
     donateur: dbUser.donateur
       ? {
           id: dbUser.donateur.id,
-          organisation: dbUser.donateur.organisation ?? null,
+          donorType: dbUser.donateur.donorType ?? null,
+          sector: dbUser.donateur.sector ?? null,
         }
       : null,
   };

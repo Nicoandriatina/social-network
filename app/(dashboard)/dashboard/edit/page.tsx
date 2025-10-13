@@ -148,12 +148,16 @@ export default function EditProfilePage() {
             <legend className="px-2 text-sm font-semibold text-gray-600">Enseignant</legend>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium">Matière</label>
-                <input className="w-full border rounded px-3 py-2" {...register("enseignant.matiere")} />
+                <label className="block text-sm font-medium">École</label>
+                <input className="w-full border rounded px-3 py-2" {...register("enseignant.school")} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Poste</label>
+                <input className="w-full border rounded px-3 py-2" {...register("enseignant.school")} />
               </div>
               <div>
                 <label className="block text-sm font-medium">Expérience</label>
-                <input className="w-full border rounded px-3 py-2" {...register("enseignant.experience")} />
+                <input className="w-full border rounded px-3 py-2" {...register("enseignant.position")} />
               </div>
               <div>
                 <label className="block text-sm font-medium">Diplôme</label>

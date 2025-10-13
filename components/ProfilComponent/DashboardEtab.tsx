@@ -252,30 +252,32 @@ export default function EtabDashboard({ user }: { user: FrontUser }) {
             </div>
           </div>
 
-          <nav className="bg-white rounded-2xl border border-slate-200 p-2">
-            {[
-              ["📝", "Mes Projets", () => setActiveTab("projets")],
-              ["💰", "Donations Reçues", () => setActiveTab("donations")],
-              ["👥", "Mon Équipe", null],
-              ["💬", "Messages", () => window.location.href ="dashboard/messages"],
-              ["📊", "Statistiques", null],
-              ["⚙️", "Paramètres", null ],
-            ].map(([icon, label, onClick], i) => (
-              <button 
-                key={i} 
-                onClick={onClick as () => void || undefined}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer ${
-                  (label === "Mes Projets" && activeTab === "projets") || 
-                  (label === "Donations Reçues" && activeTab === "donations")
-                    ? "bg-indigo-50 text-indigo-700" 
-                    : ""
-                } ${!onClick ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={!onClick}
-              >
-                <span>{icon}</span><span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </nav>
+            <nav className="bg-white rounded-2xl border border-slate-200 p-2">
+              {[
+                ["📝", "Mes Projets", () => setActiveTab("projets")],
+                ["💰", "Donations Reçues", () => setActiveTab("donations")],
+                ["✅", "Valider enseignants", () => window.location.href = "/dashboard/admin/pending-teachers"],
+                ["👥", "Mon Équipe", null],
+                ["💬", "Messages", () => window.location.href = "/dashboard/messages"],
+                ["📊", "Statistiques", null],
+                ["⚙️", "Paramètres", null],
+              ].map(([icon, label, onClick], i) => (
+                <button 
+                  key={i} 
+                  onClick={onClick as () => void || undefined}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer ${
+                    (label === "Mes Projets" && activeTab === "projets") || 
+                    (label === "Donations Reçues" && activeTab === "donations")
+                      ? "bg-indigo-50 text-indigo-700" 
+                      : ""
+                  } ${!onClick ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={!onClick}
+                >
+                  <span>{icon}</span>
+                  <span className="text-sm font-medium">{label}</span>
+                </button>
+              ))}
+            </nav>
 
           {/* Widget des dons */}
           <DonationsWidget userType="ETABLISSEMENT" />

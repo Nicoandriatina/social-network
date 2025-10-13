@@ -1,84 +1,118 @@
-export default function EnseignantFields({
-  register,
-  errors,
-}: {
-  register: any;
-  errors: any;
-}) {
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Etablissement = {
+  id: string;
+  nom: string;
+  type: string;
+  niveau: string;
+};
+
+export default function EnseignantFields({ register, errors }: any) {
+  const [etablissements, setEtablissements] = useState<Etablissement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // ✅ Utiliser ?simple=true pour accès public
+    fetch("/api/etablissements?simple=true")
+      .then(res => res.json())
+      .then(data => {
+        setEtablissements(data.etablissements || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Erreur chargement établissements:", err);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-        🎓 Informations professionnelles
+        👨‍🏫 Informations Enseignant
       </h3>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
+        {/* Sélection de l'établissement */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Établissement de rattachement
+            🏫 Établissement * <span className="text-red-500">*</span>
           </label>
-          <select
-            {...register("school")}
-            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              errors.school ? "border-red-500" : "border-gray-300"
-            }`}
-          >
-            <option value="">Sélectionnez votre établissement</option>
-            <option value="lycee_antananarivo">Lycée Antananarivo</option>
-            <option value="ceg_antsirabe">CEG Antsirabe</option>
-            <option value="epp_fianarantsoa">EPP Fianarantsoa</option>
-            <option value="universite_antananarivo">Université d'Antananarivo</option>
-          </select>
-          {errors.school && <p className="text-red-500 text-xs mt-1">{errors.school.message}</p>}
+          {loading ? (
+            <div className="text-gray-500 text-sm py-3">Chargement des établissements...</div>
+          ) : (
+            <select
+              {...register("etablissementId")}
+              className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                errors.etablissementId ? "border-red-500" : "border-gray-300"
+              }`}
+            >
+              <option value="">-- Sélectionnez votre établissement --</option>
+              {etablissements.map((etab) => (
+                <option key={etab.id} value={etab.id}>
+                  {etab.nom} ({etab.type} - {etab.niveau})
+                </option>
+              ))}
+            </select>
+          )}
+          {errors.etablissementId && (
+            <p className="text-red-500 text-xs mt-1">{errors.etablissementId.message}</p>
+          )}
         </div>
 
+        {/* Position */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Fonction / Matière enseignée
+            💼 Poste occupé
           </label>
           <input
-            {...register("position")}
             type="text"
             placeholder="Ex: Professeur de Mathématiques"
-            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            {...register("position")}
+            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
               errors.position ? "border-red-500" : "border-gray-300"
             }`}
           />
-          {errors.position && <p className="text-red-500 text-xs mt-1">{errors.position.message}</p>}
+          {errors.position && (
+            <p className="text-red-500 text-xs mt-1">{errors.position.message}</p>
+          )}
         </div>
 
+        {/* Expérience */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Années d'expérience
-          </label>
-          <select
-            {...register("experience")}
-            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              errors.experience ? "border-red-500" : "border-gray-300"
-            }`}
-          >
-            <option value="">Sélectionnez</option>
-            <option value="0-2">0-2 ans</option>
-            <option value="3-5">3-5 ans</option>
-            <option value="6-10">6-10 ans</option>
-            <option value="11-20">11-20 ans</option>
-            <option value="20+">Plus de 20 ans</option>
-          </select>
-          {errors.experience && <p className="text-red-500 text-xs mt-1">{errors.experience.message}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Diplôme principal
+            📅 Années d'expérience
           </label>
           <input
-            {...register("degree")}
             type="text"
-            placeholder="Ex: Licence en Mathématiques"
-            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            placeholder="Ex: 5 ans"
+            {...register("experience")}
+            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              errors.experience ? "border-red-500" : "border-gray-300"
+            }`}
+          />
+          {errors.experience && (
+            <p className="text-red-500 text-xs mt-1">{errors.experience.message}</p>
+          )}
+        </div>
+
+        {/* Diplôme */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            🎓 Diplôme le plus élevé
+          </label>
+          <input
+            type="text"
+            placeholder="Ex: Master en Mathématiques"
+            {...register("degree")}
+            className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${
               errors.degree ? "border-red-500" : "border-gray-300"
             }`}
           />
-          {errors.degree && <p className="text-red-500 text-xs mt-1">{errors.degree.message}</p>}
+          {errors.degree && (
+            <p className="text-red-500 text-xs mt-1">{errors.degree.message}</p>
+          )}
         </div>
       </div>
     </div>
