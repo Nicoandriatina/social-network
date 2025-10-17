@@ -117,6 +117,10 @@ model User {
 
   scolarityHistories ScolarityHistory[] @relation("UserScolarities")
 
+  experiences     Experience[]     @relation("EnseignantExperiences")
+  formations      Formation[]      @relation("EnseignantFormations")
+  certifications  Certification[]  @relation("EnseignantCertifications")
+
   commentLikes CommentLike[] @relation("UserCommentLikes")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -413,4 +417,55 @@ model ScolarityHistory {
 
   @@unique([userId, etablissementId])
   @@map("scholarity_histories")
+}
+model Experience {
+  id             String    @id @default(cuid())
+  enseignantId   String
+  poste          String
+  etablissement  String
+  debut          DateTime
+  fin            DateTime?
+  enCours        Boolean   @default(false)
+  description    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // ✅ Relation avec User (pas avec Enseignant)
+  enseignant     User      @relation("EnseignantExperiences", fields: [enseignantId], references: [id], onDelete: Cascade)
+
+  @@index([enseignantId])
+  @@index([debut])
+  @@map("experiences")
+}
+model Formation {
+  id             String    @id @default(cuid())
+  enseignantId   String
+  diplome        String
+  etablissement  String
+  annee          String
+  description    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  enseignant     User      @relation("EnseignantFormations", fields: [enseignantId], references: [id], onDelete: Cascade)
+
+  @@index([enseignantId])
+  @@index([annee])
+  @@map("formations")
+}
+model Certification {
+  id             String    @id @default(cuid())
+  enseignantId   String
+  titre          String
+  organisme      String
+  date           DateTime
+  lien           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  enseignant     User      @relation("EnseignantCertifications", fields: [enseignantId], references: [id], onDelete: Cascade)
+
+  @@index([enseignantId])
+  @@index([date])
+  @@map("certifications")
 }

@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import DonationModal from "../donations/DonationModal";
 import DonationStatusManager from "../donations/DonationStatusManager";
 import { useDonationStats } from "@/lib/hooks/useDonationStats";
+import { AvatarDisplay } from "@/components/AvatarDisplay";
 
 type DonateurDashboardProps = {
   user: {
@@ -13,7 +14,6 @@ type DonateurDashboardProps = {
     profession?: string | null;
   };
 };
-
 
 export default function DonateurDashboard({ user }: DonateurDashboardProps) {
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
@@ -31,14 +31,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
     envoyes: 0,
     recus: 0
   });
-
-  const avatarLetters =
-    (user.fullName || "Donateur")
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "DN";
 
   // Fonction pour formater les montants
   const formatAmount = (amount: number) => {
@@ -62,7 +54,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
       const data = await response.json();
       setDonations(data.donations || []);
       
-      // Calculer les stats locales (du côté donateur)
       const totalDons = data.donations.length;
       const projetsSoutenus = new Set(
         data.donations
@@ -70,7 +61,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
           .map(d => d.destination.name)
       ).size;
 
-      // Calculer le total monétaire donné
       const totalMonetaire = data.donations
         .filter(d => d.type === 'MONETAIRE' && d.montant)
         .reduce((sum, d) => sum + (d.montant || 0), 0);
@@ -101,7 +91,7 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
 
   const handleDonationSuccess = (newDonation) => {
     loadDonations();
-    refreshStats(); // Actualiser aussi les stats globales
+    refreshStats();
     alert(`Don "${newDonation.libelle}" créé avec succès !`);
   };
 
@@ -149,7 +139,7 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
           </div>
         );
 
-      default: // dons
+      default:
         return (
           <div className="p-6">
             {loading ? (
@@ -185,7 +175,7 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Statistiques rapides avec montants */}
+                {/* Statistiques rapides */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                     <div className="flex items-center gap-3">
@@ -238,7 +228,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
                   </div>
                 </div>
 
-                {/* Gestionnaire de statut des dons */}
                 <div className="bg-white border border-slate-200 rounded-2xl">
                   <div className="p-6 border-b border-slate-200">
                     <h3 className="text-lg font-semibold text-slate-800">Gestion de mes dons</h3>
@@ -255,7 +244,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
                   </div>
                 </div>
 
-                {/* Résumé des contributions */}
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6">
                   <h3 className="font-semibold text-emerald-800 mb-4">Résumé de mes contributions</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -298,16 +286,21 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
-      
-      {/* 3 colonnes */}
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         {/* LEFT SIDEBAR */}
         <aside className="hidden lg:flex flex-col gap-6">
           {/* Profil donateur */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center font-bold text-xl shadow-md">
-              {avatarLetters}
+            {/* ✅ UTILISER AvatarDisplay */}
+            <div className="flex justify-center mb-3">
+              <AvatarDisplay
+                name={user.fullName || "Donateur"}
+                avatar={user.avatar}
+                size="lg"
+                showBorder={true}
+              />
             </div>
+            
             <div className="text-center mt-3">
               <h3 className="font-semibold text-slate-800">
                 {user.fullName || "Donateur(trice)"}
@@ -341,60 +334,60 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
           </div>
 
           {/* Menu */}
-         <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
-          <ul className="space-y-1 text-sm">
-            <li>
-              <button 
-                onClick={() => setActiveTab("dons")}
-                className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
-                  activeTab === "dons" 
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
-                    : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
-                }`}
-              >
-                💝 Mes dons
-              </button>
-            </li>
-            <li>
-              <button 
-                onClick={() => setActiveTab("projets")}
-                className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
-                  activeTab === "projets" 
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
-                    : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
-                }`}
-              >
-                🧩 Projets suivis
-              </button>
-            </li>
-            <li>
-              <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
-                ⭐ Favoris
-              </button>
-            </li>
-            <li>
-              <Link href="/dashboard/friends" className="block">
-                <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
-                  👥 Mes amis
+          <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+            <ul className="space-y-1 text-sm">
+              <li>
+                <button 
+                  onClick={() => setActiveTab("dons")}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
+                    activeTab === "dons" 
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
+                      : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
+                  }`}
+                >
+                  💝 Mes dons
                 </button>
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard/messages" className="block">
-                <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
-                  💬 Messages
+              </li>
+              <li>
+                <button 
+                  onClick={() => setActiveTab("projets")}
+                  className={`w-full text-left px-3 py-2 rounded-xl transition-all duration-300 ${
+                    activeTab === "projets" 
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg" 
+                      : "text-slate-700 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg"
+                  }`}
+                >
+                  🧩 Projets suivis
                 </button>
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard/edit" className="block">
+              </li>
+              <li>
                 <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
-                  ⚙️ Paramètres
+                  ⭐ Favoris
                 </button>
-              </Link>
-            </li>
-          </ul>
-        </nav>
+              </li>
+              <li>
+                <Link href="/dashboard/friends" className="block">
+                  <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                    👥 Mes amis
+                  </button>
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard/messages" className="block">
+                  <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                    💬 Messages
+                  </button>
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard/edit" className="block">
+                  <button className="w-full text-left px-3 py-2 rounded-xl text-slate-700 transition-all duration-300 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 hover:text-white hover:shadow-lg">
+                    ⚙️ Paramètres
+                  </button>
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </aside>
 
         {/* MAIN FEED */}
@@ -507,7 +500,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
             </div>
           </div>
 
-          {/* Actions sur les dons en attente */}
           {stats.enAttente > 0 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5">
               <h3 className="font-semibold text-yellow-800 mb-2">⏳ Actions requises</h3>
@@ -523,7 +515,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
             </div>
           )}
 
-          {/* Félicitations */}
           {stats.recus > 0 && (
             <div className="bg-green-50 border border-green-200 rounded-2xl p-5">
               <h3 className="font-semibold text-green-800 mb-2">🎉 Bravo !</h3>
@@ -538,7 +529,6 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
         </aside>
       </div>
 
-      {/* Modal de création de don */}
       <DonationModal
         isOpen={isDonationModalOpen}
         onClose={() => setIsDonationModalOpen(false)}

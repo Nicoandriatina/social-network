@@ -1,7 +1,11 @@
+
+
+// components/ProfilComponent/ProfileViewEtablissemnet.tsx
 "use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { AvatarDisplay } from "@/components/AvatarDisplay";
 
 type ProfileViewProps = {
   profile: {
@@ -41,7 +45,6 @@ export default function ProfileViewEtablissement({
 
   const fetchEtablissementData = async () => {
     try {
-      // Récupérer les projets de l'établissement
       const resProjects = await fetch(`/api/etablissement/${profile.id}/projects`, {
         credentials: "include",
       });
@@ -50,7 +53,6 @@ export default function ProfileViewEtablissement({
         setProjects(data.projects || []);
       }
 
-      // Récupérer les donations reçues
       const resDonations = await fetch(`/api/etablissement/${profile.id}/donations`, {
         credentials: "include",
       });
@@ -65,11 +67,6 @@ export default function ProfileViewEtablissement({
     }
   };
 
-  const maskContactInfo = (value: string | null | undefined) =>
-    value === "XXXX" ? "XXXX" : value;
-
-  const showFullInfo = profile.isFriend;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200">
       <div className="max-w-7xl mx-auto px-6 py-6">
@@ -81,17 +78,13 @@ export default function ProfileViewEtablissement({
           {/* Info utilisateur */}
           <div className="relative px-8 pb-8">
             <div className="flex items-end gap-6 -mt-24 mb-6">
-              {profile.avatar ? (
-                <img
-                  src={profile.avatar}
-                  alt={profile.nom}
-                  className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-lg"
-                />
-              ) : (
-                <div className="w-40 h-40 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-6xl font-bold border-4 border-white shadow-lg">
-                  {profile.nom[0]}
-                </div>
-              )}
+              {/* ✅ UTILISER AvatarDisplay */}
+              <AvatarDisplay
+                name={profile.nom}
+                avatar={profile.avatar}
+                size="xl"
+                showBorder={true}
+              />
 
               <div className="flex-1 pb-2">
                 <h1 className="text-4xl font-bold text-gray-900">

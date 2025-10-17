@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
-import ProfileViewEtablissement from "@/components/ProfilComponent/ProfileViewEtablissement";
-import ProfileViewEnseignant from "@/components/ProfilComponent/ProfileViewEnseignant";
-import ProfileViewDonateur from "@/components/ProfilComponent/ProfileViewDonateur";
 import Link from "next/link";
+import ProfileViewEtablissement from "@/components/ProfilComponent/ProfileViewEtablissemnet";
+import ProfileViewEnseignant from "@/components/ProfilComponent/ProfilViewEnseignant";
+import ProfileViewDonateur from "@/components/ProfilComponent/ProfilViewDonateur";
 
 type UserProfile = {
   id: string;
