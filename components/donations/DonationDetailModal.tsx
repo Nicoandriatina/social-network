@@ -1,4 +1,3 @@
-// components/donations/DonationDetailModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -10,33 +9,26 @@ import {
   CheckCircle2,
   Clock,
   Truck,
-  MapPin,
   FileText,
   Building2,
   GraduationCap,
-  Image as ImageIcon,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
-interface DonationDetailModalProps {
-  donation: any;
-  isOpen: boolean;
-  onClose: () => void;
-  onStatusUpdate?: (donationId: string, newStatus: string) => void;
-}
-
-export default function DonationDetailModal({ 
+const ImprovedDonationDetailModal = ({ 
   donation, 
   isOpen, 
   onClose, 
   onStatusUpdate 
-}: DonationDetailModalProps) {
+}) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   if (!isOpen || !donation) return null;
 
-  const getStatusInfo = (statut: string) => {
+  const getStatusInfo = (statut) => {
     const statusMap = {
       'EN_ATTENTE': { 
         label: 'En attente', 
@@ -60,7 +52,7 @@ export default function DonationDetailModal({
     return statusMap[statut] || statusMap['EN_ATTENTE'];
   };
 
-  const getTypeInfo = (type: string) => {
+  const getTypeInfo = (type) => {
     const typeMap = {
       'MONETAIRE': { label: 'Don monétaire', icon: '💰', color: 'text-green-600' },
       'VIVRES': { label: 'Don alimentaire', icon: '🍎', color: 'text-orange-600' },
@@ -69,7 +61,7 @@ export default function DonationDetailModal({
     return typeMap[type] || { label: type, icon: '📦', color: 'text-gray-600' };
   };
 
-  const getDestinationInfo = (donation: any) => {
+  const getDestinationInfo = (donation) => {
     if (donation.project) {
       return {
         type: 'Projet',
@@ -95,11 +87,11 @@ export default function DonationDetailModal({
     return { type: 'Inconnu', name: 'Destination inconnue', icon: Package };
   };
 
-  const formatAmount = (amount: number) => {
+  const formatAmount = (amount) => {
     return new Intl.NumberFormat('fr-MG').format(amount);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
@@ -110,17 +102,32 @@ export default function DonationDetailModal({
     });
   };
 
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleStatusUpdate = async (newStatus) => {
     if (!onStatusUpdate) return;
     
     setUpdatingStatus(true);
     try {
       await onStatusUpdate(donation.id, newStatus);
-      // Le modal sera fermé par le parent après la mise à jour
     } catch (error) {
       console.error('Erreur lors de la mise à jour:', error);
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const nextImage = () => {
+    if (donation.photos && donation.photos.length > 0) {
+      setSelectedImageIndex((prev) => 
+        prev === donation.photos.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (donation.photos && donation.photos.length > 0) {
+      setSelectedImageIndex((prev) => 
+        prev === 0 ? donation.photos.length - 1 : prev - 1
+      );
     }
   };
 
@@ -129,12 +136,14 @@ export default function DonationDetailModal({
   const destinationInfo = getDestinationInfo(donation);
   const StatusIcon = statusInfo.icon;
   const DestinationIcon = destinationInfo.icon;
+  const hasItems = donation.items && donation.items.length > 0;
+  const totalQuantity = hasItems ? donation.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto my-8">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-slate-200 rounded-t-2xl">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold">
               {donation.donateur.fullName.slice(0, 2).toUpperCase()}
@@ -168,9 +177,19 @@ export default function DonationDetailModal({
               <button
                 onClick={() => handleStatusUpdate('RECEPTIONNE')}
                 disabled={updatingStatus}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                {updatingStatus ? 'Confirmation...' : 'Confirmer la réception'}
+                {updatingStatus ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Confirmation...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Confirmer la réception
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -182,23 +201,64 @@ export default function DonationDetailModal({
               
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{typeInfo.icon}</span>
-                  <div>
-                    <div className={`font-medium ${typeInfo.color}`}>{typeInfo.label}</div>
+                  <span className="text-3xl">{typeInfo.icon}</span>
+                  <div className="flex-1">
+                    <div className={`font-semibold ${typeInfo.color}`}>{typeInfo.label}</div>
+                    
+                    {/* Affichage selon le type */}
                     {donation.type === 'MONETAIRE' && donation.montant && (
-                      <div className="text-lg font-bold text-green-600">
+                      <div className="text-2xl font-bold text-green-600 mt-1">
                         {formatAmount(donation.montant)} Ar
                       </div>
                     )}
-                    {donation.quantite && (
-                      <div className="text-slate-600">
-                        Quantité: {donation.quantite} unités
+                    
+                    {hasItems && (
+                      <div className="text-slate-600 mt-1">
+                        {donation.items.length} article{donation.items.length > 1 ? 's' : ''} • {totalQuantity} unités au total
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3">
+                {/* Liste des articles détaillée */}
+                {hasItems && (
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Détail des articles
+                    </h4>
+                    <div className="space-y-2">
+                      {donation.items.map((item, index) => (
+                        <div 
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <span className="text-xl">{typeInfo.icon}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-800">{item.name}</p>
+                              <p className="text-sm text-slate-500">Article {index + 1}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xl font-bold text-blue-600">
+                              {item.quantity}
+                            </div>
+                            <div className="text-xs text-slate-500">unités</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-600">Total</span>
+                      <span className="text-xl font-bold text-blue-600">{totalQuantity} unités</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-3 pt-3 border-t">
                   <DestinationIcon className="w-5 h-5 text-slate-500 mt-0.5" />
                   <div>
                     <div className="font-medium text-slate-800">{destinationInfo.type}</div>
@@ -209,7 +269,7 @@ export default function DonationDetailModal({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pt-3 border-t">
                   <User className="w-5 h-5 text-slate-500" />
                   <div>
                     <div className="font-medium text-slate-800">Donateur</div>
@@ -274,7 +334,7 @@ export default function DonationDetailModal({
                     <div className="w-3 h-3 bg-blue-400 rounded-full mt-2 animate-pulse"></div>
                     <div>
                       <div className="text-sm text-slate-500">
-                        En attente de confirmation de réception
+                        En cours d'acheminement, en attente de confirmation
                       </div>
                     </div>
                   </div>
@@ -283,30 +343,53 @@ export default function DonationDetailModal({
             </div>
           </div>
 
-          {/* Photos */}
+          {/* Photos avec navigation */}
           {donation.photos && donation.photos.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-slate-800">Photos du don</h3>
               
-              {/* Photo principale */}
-              <div className="aspect-video bg-slate-100 rounded-xl overflow-hidden">
+              {/* Photo principale avec navigation */}
+              <div className="relative aspect-video bg-slate-100 rounded-xl overflow-hidden group">
                 <img
                   src={donation.photos[selectedImageIndex]}
                   alt="Photo du don"
                   className="w-full h-full object-contain"
                 />
+                
+                {/* Navigation si plusieurs photos */}
+                {donation.photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                    
+                    {/* Indicateur de position */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-sm rounded-full">
+                      {selectedImageIndex + 1} / {donation.photos.length}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Miniatures */}
               {donation.photos.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto">
+                <div className="flex gap-2 overflow-x-auto pb-2">
                   {donation.photos.map((photo, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
                         selectedImageIndex === index 
-                          ? 'border-indigo-500' 
+                          ? 'border-indigo-500 shadow-lg scale-105' 
                           : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -326,7 +409,7 @@ export default function DonationDetailModal({
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Fermer
             </button>
@@ -334,7 +417,7 @@ export default function DonationDetailModal({
             {donation.photos && donation.photos.length > 0 && (
               <button
                 onClick={() => window.open(donation.photos[selectedImageIndex], '_blank')}
-                className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 flex items-center gap-2"
+                className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 flex items-center gap-2 transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Télécharger la photo
@@ -345,4 +428,6 @@ export default function DonationDetailModal({
       </div>
     </div>
   );
-}
+};
+
+export default ImprovedDonationDetailModal;

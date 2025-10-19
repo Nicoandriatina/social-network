@@ -1,10 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Package, Truck, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle2, Package, Truck, AlertCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 
-const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
+const UpdatedDonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  const [expandedDonations, setExpandedDonations] = useState(new Set());
+
+  const toggleExpanded = (donationId) => {
+    setExpandedDonations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(donationId)) {
+        newSet.delete(donationId);
+      } else {
+        newSet.add(donationId);
+      }
+      return newSet;
+    });
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -48,17 +61,6 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
       'NON_VIVRES': { label: 'Matériel', icon: '📚' }
     };
     return typeMap[type] || { label: type, icon: '📦' };
-  };
-
-  const canUpdateStatus = (don, newStatus) => {
-    if (userType === "DONATEUR") {
-      return don.donateurId === "current-user-id" && newStatus === "ENVOYE";
-    } else if (userType === "ETABLISSEMENT") {
-      return newStatus === "RECEPTIONNE";
-    } else if (userType === "ENSEIGNANT") {
-      return don.personnelId === "current-user-id" && newStatus === "RECEPTIONNE";
-    }
-    return false;
   };
 
   const getAvailableActions = (don) => {
@@ -133,6 +135,10 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
     return { primary: 'Destination inconnue', secondary: '' };
   };
 
+  const formatAmount = (amount) => {
+    return new Intl.NumberFormat('fr-MG').format(amount);
+  };
+
   if (!donations || donations.length === 0) {
     return (
       <div className="text-center py-8">
@@ -158,6 +164,8 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
         const destination = getDestinationDisplay(don);
         const actions = getAvailableActions(don);
         const StatusIcon = statusInfo.icon;
+        const isExpanded = expandedDonations.has(don.id);
+        const hasItems = don.items && don.items.length > 0;
 
         return (
           <div key={don.id} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -176,14 +184,71 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
                   </div>
                 </div>
 
-                {don.quantite && (
-                  <p className="text-sm text-slate-600 mb-2">
-                    Quantité: {don.quantite}
-                  </p>
+                {/* Affichage selon le type de don */}
+                {don.type === 'MONETAIRE' && don.montant && (
+                  <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                    <span className="text-lg">💰</span>
+                    <span className="font-bold text-green-700 text-lg">
+                      {formatAmount(don.montant)} Ar
+                    </span>
+                  </div>
+                )}
+
+                {hasItems && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => toggleExpanded(don.id)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <span className="text-lg">{typeInfo.icon}</span>
+                      <span className="text-sm font-medium text-blue-800">
+                        {don.items.length} article{don.items.length > 1 ? 's' : ''}
+                      </span>
+                      <span className="text-xs text-blue-600">
+                        ({don.items.reduce((sum, item) => sum + item.quantity, 0)} unités)
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-blue-600" />
+                      )}
+                    </button>
+
+                    {/* Liste détaillée des articles */}
+                    {isExpanded && (
+                      <div className="mt-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                          <Package className="w-4 h-4" />
+                          Détail des articles
+                        </h4>
+                        <div className="space-y-2">
+                          {don.items.map((item, index) => (
+                            <div 
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <span className="text-lg">{typeInfo.icon}</span>
+                                </div>
+                                <span className="font-medium text-slate-800">{item.name}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-blue-600">
+                                  {item.quantity}
+                                </div>
+                                <div className="text-xs text-slate-500">unités</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {userType !== "DONATEUR" && don.donateur && (
-                  <p className="text-sm text-slate-600 mb-2">
+                  <p className="text-sm text-slate-600 mt-2">
                     Don de: {don.donateur.fullName}
                   </p>
                 )}
@@ -228,7 +293,7 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
 
             {/* Actions disponibles */}
             {actions.length > 0 && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-3">
                 <span className="text-sm text-slate-600">Actions disponibles:</span>
                 {actions.map((action) => {
                   const ActionIcon = action.icon;
@@ -257,7 +322,7 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
             )}
 
             {/* Message d'état */}
-            <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+            <div className="p-3 bg-slate-50 rounded-lg">
               <p className="text-sm text-slate-600 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {statusInfo.description}
@@ -270,4 +335,4 @@ const DonationStatusManager = ({ donations, onStatusUpdate, userType }) => {
   );
 };
 
-export default DonationStatusManager;
+export default UpdatedDonationStatusManager;

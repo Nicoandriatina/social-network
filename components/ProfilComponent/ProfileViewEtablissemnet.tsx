@@ -45,7 +45,7 @@ export default function ProfileViewEtablissement({
 
   const fetchEtablissementData = async () => {
     try {
-      const resProjects = await fetch(`/api/etablissement/${profile.id}/projects`, {
+      const resProjects = await fetch(`/api/etablissements/${profile.id}/projects`, {
         credentials: "include",
       });
       if (resProjects.ok) {
@@ -53,7 +53,7 @@ export default function ProfileViewEtablissement({
         setProjects(data.projects || []);
       }
 
-      const resDonations = await fetch(`/api/etablissement/${profile.id}/donations`, {
+      const resDonations = await fetch(`/api/etablissements/${profile.id}/donations`, {
         credentials: "include",
       });
       if (resDonations.ok) {

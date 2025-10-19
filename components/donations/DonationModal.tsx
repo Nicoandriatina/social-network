@@ -1,53 +1,74 @@
 "use client";
 
-
 import { useState, useRef, useEffect } from "react";
-import { X, Upload, Plus, AlertCircle, CheckCircle2, Heart, Building2, GraduationCap, FileText } from "lucide-react";
+import { X, Upload, Plus, AlertCircle, Heart, Building2, GraduationCap, FileText, Trash2, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { AvatarDisplay } from "@/components/AvatarDisplay";
 
-const DonationModal = ({ isOpen, onClose, onSuccess }) => {
+const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
-    libelle: '',
     type: 'MONETAIRE',
-    montant: '', // Nouveau champ pour les dons monétaires
-    quantite: '',
-    destinationType: 'project', // project, etablissement, personnel
+    montant: '',
+    items: [],
+    destinationType: 'project',
     destinationId: '',
     photos: []
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [etablissements, setEtablissements] = useState([]);
-  const [personnels, setPersonnels] = useState([]);
+  
+  // États pour les destinations
+  const [destinations, setDestinations] = useState([]);
   const [loadingDestinations, setLoadingDestinations] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
-  // Fermer avec Escape
+  const [currentItem, setCurrentItem] = useState({ name: '', quantity: '' });
+
+  // Fermer le dropdown si on clique à l'extérieur
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
     };
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      // Charger les données initiales
       loadDestinations();
     }
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+  }, [isOpen, formData.destinationType]);
 
   const loadDestinations = async () => {
     setLoadingDestinations(true);
     try {
-      // Charger toutes les destinations depuis une seule API
       const response = await fetch('/api/donations/destinations');
       if (response.ok) {
         const data = await response.json();
-        setProjects(data.projects || []);
-        setEtablissements(data.etablissements || []);
-        setPersonnels(data.personnels || []);
-      } else {
-        console.error('Erreur lors du chargement des destinations');
+        
+        // Sélectionner les bonnes destinations selon le type
+        let destinationList = [];
+        if (formData.destinationType === 'project') {
+          destinationList = data.projects || [];
+        } else if (formData.destinationType === 'etablissement') {
+          destinationList = data.etablissements || [];
+        } else if (formData.destinationType === 'personnel') {
+          destinationList = data.personnels || [];
+        }
+        
+        setDestinations(destinationList);
       }
     } catch (error) {
       console.error('Erreur chargement destinations:', error);
@@ -62,26 +83,52 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
       [field]: value
     }));
     
-    // Reset destination si on change de type
     if (field === 'destinationType') {
       setFormData(prev => ({
         ...prev,
         destinationId: ''
       }));
+      setSearchTerm('');
+      loadDestinations();
     }
-    
-    // Auto-générer le libellé pour les dons monétaires
-    if (field === 'montant' && formData.type === 'MONETAIRE' && value) {
-      const montantFormate = new Intl.NumberFormat('fr-MG').format(parseInt(value) || 0);
+
+    if (field === 'type') {
       setFormData(prev => ({
         ...prev,
-        libelle: `Don de ${montantFormate} Ar`
+        items: [],
+        montant: ''
       }));
+      setCurrentItem({ name: '', quantity: '' });
     }
     
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
+  };
+
+  const addItem = () => {
+    if (!currentItem.name.trim() || !currentItem.quantity || parseInt(currentItem.quantity) <= 0) {
+      setErrors(prev => ({ ...prev, items: 'Veuillez remplir le nom et la quantité' }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { 
+        name: currentItem.name.trim(), 
+        quantity: parseInt(currentItem.quantity) 
+      }]
+    }));
+    
+    setCurrentItem({ name: '', quantity: '' });
+    setErrors(prev => ({ ...prev, items: null }));
+  };
+
+  const removeItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
   };
 
   const handleDrag = (e) => {
@@ -115,7 +162,7 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
   const handleFiles = async (files) => {
     const validFiles = Array.from(files).filter(file => {
       const isImage = file.type.startsWith('image/');
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+      const isValidSize = file.size <= 5 * 1024 * 1024;
       return isImage && isValidSize;
     });
 
@@ -130,7 +177,7 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
     const newPhotos = await Promise.all(photoPromises);
     setFormData(prev => ({
       ...prev,
-      photos: [...prev.photos, ...newPhotos].slice(0, 3)
+      photos: [...prev.photos, ...newPhotos].slice(0, 5)
     }));
   };
 
@@ -144,31 +191,32 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.libelle.trim()) {
-      newErrors.libelle = 'Le libellé est obligatoire';
-    }
-
     if (!formData.destinationId) {
-      newErrors.destinationId = 'Veuillez sélectionner une destination';
+      newErrors.destinationId = 'Veuillez sélectionner un bénéficiaire';
     }
 
-    if (!formData.destinationType) {
-      newErrors.destinationType = 'Veuillez sélectionner un type de destination';
-    }
-
-    // Validation spécifique selon le type
     if (formData.type === 'MONETAIRE') {
       if (!formData.montant || parseFloat(formData.montant) <= 0) {
-        newErrors.montant = 'Le montant est obligatoire pour un don monétaire';
+        newErrors.montant = 'Le montant est obligatoire';
       }
-    } else if (formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') {
-      if (!formData.quantite || parseInt(formData.quantite) <= 0) {
-        newErrors.quantite = 'La quantité est obligatoire pour ce type de don';
+    } else {
+      if (formData.items.length === 0) {
+        newErrors.items = 'Veuillez ajouter au moins un article';
       }
     }
 
-    console.log("Validation côté client:", { formData, errors: newErrors }); // Debug
     return newErrors;
+  };
+
+  const generateLibelle = () => {
+    if (formData.type === 'MONETAIRE') {
+      const montantFormate = new Intl.NumberFormat('fr-MG').format(parseInt(formData.montant) || 0);
+      return `Don de ${montantFormate} Ar`;
+    } else {
+      const totalItems = formData.items.length;
+      const itemNames = formData.items.map(item => item.name).join(', ');
+      return `Don de ${totalItems} article${totalItems > 1 ? 's' : ''}: ${itemNames}`;
+    }
   };
 
   const handleSubmit = async () => {
@@ -181,31 +229,16 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
     setIsSubmitting(true);
     
     try {
-      // Préparer les données avec validation
       const donationData = {
-        libelle: formData.libelle.trim(),
+        libelle: generateLibelle(),
         type: formData.type,
-        // Pour les dons monétaires, utiliser le montant. Pour les autres, utiliser la quantité
-        montant: formData.type === 'MONETAIRE' && formData.montant 
-              ? parseFloat(formData.montant) 
-              : undefined,
-        quantite: (formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') && formData.quantite
-              ? parseInt(formData.quantite)
-              : undefined,
+        montant: formData.type === 'MONETAIRE' ? parseFloat(formData.montant) : undefined,
+        items: formData.type !== 'MONETAIRE' ? formData.items : undefined,
         photos: formData.photos.map(photo => photo.base64),
-        // Destination selon le type - s'assurer qu'une seule destination est définie
-        ...(formData.destinationType === 'project' && formData.destinationId && { 
-          projectId: formData.destinationId 
-        }),
-        ...(formData.destinationType === 'etablissement' && formData.destinationId && { 
-          etablissementId: formData.destinationId 
-        }),
-        ...(formData.destinationType === 'personnel' && formData.destinationId && { 
-          personnelId: formData.destinationId 
-        }),
+        ...(formData.destinationType === 'project' && { projectId: formData.destinationId }),
+        ...(formData.destinationType === 'etablissement' && { etablissementId: formData.destinationId }),
+        ...(formData.destinationType === 'personnel' && { personnelId: formData.destinationId }),
       };
-
-      console.log("Données envoyées à l'API:", donationData); // Debug
 
       const response = await fetch('/api/donations', {
         method: 'POST',
@@ -214,7 +247,6 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
       });
 
       const result = await response.json();
-      console.log("Réponse de l'API:", result); // Debug
 
       if (!response.ok) {
         if (result.details?.fieldErrors) {
@@ -225,20 +257,19 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
         return;
       }
 
-      // Succès
       onSuccess(result.donation);
       onClose();
       
-      // Reset form
       setFormData({
-        libelle: '',
         type: 'MONETAIRE',
         montant: '',
-        quantite: '',
+        items: [],
         destinationType: 'project',
         destinationId: '',
         photos: []
       });
+      setCurrentItem({ name: '', quantity: '' });
+      setSearchTerm('');
 
     } catch (error) {
       console.error('Erreur:', error);
@@ -248,47 +279,25 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  const getDestinationOptions = () => {
-    switch (formData.destinationType) {
-      case 'project':
-        return projects.map(project => ({
-          value: project.id,
-          label: project.label
-        }));
-      case 'etablissement':
-        return etablissements.map(etab => ({
-          value: etab.id,
-          label: etab.label
-        }));
-      case 'personnel':
-        return personnels.map(personnel => ({
-          value: personnel.id,
-          label: personnel.label
-        }));
-      default:
-        return [];
-    }
-  };
-
   const getDestinationTypeInfo = (type) => {
     const typeMap = {
       'project': {
         icon: FileText,
         label: 'Projet spécifique',
         desc: 'Soutenez un projet précis',
-        placeholder: 'Sélectionnez un projet'
+        placeholder: 'Rechercher un projet...'
       },
       'etablissement': {
         icon: Building2,
         label: 'Établissement',
         desc: 'Don général à un établissement',
-        placeholder: 'Sélectionnez un établissement'
+        placeholder: 'Rechercher un établissement...'
       },
       'personnel': {
         icon: GraduationCap,
         label: 'Enseignant/Personnel',
         desc: 'Don personnel à un éducateur',
-        placeholder: 'Sélectionnez un enseignant'
+        placeholder: 'Rechercher un enseignant...'
       }
     };
     return typeMap[type];
@@ -299,13 +308,27 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
     return new Intl.NumberFormat('fr-MG').format(parseInt(value));
   };
 
+  // Filtrer les destinations selon la recherche
+  const filteredDestinations = destinations.filter(dest => {
+    const searchLower = searchTerm.toLowerCase();
+    const name = (dest.nom || dest.fullName || dest.titre || '').toLowerCase();
+    const secondary = (dest.type || dest.niveau || dest.etablissementNom || '').toLowerCase();
+    return name.includes(searchLower) || secondary.includes(searchLower);
+  });
+
+  // Limiter à 10 résultats
+  const displayedDestinations = filteredDestinations.slice(0, 10);
+
+  // Trouver la destination sélectionnée
+  const selectedDestination = destinations.find(d => d.id === formData.destinationId);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl w-full max-w-3xl my-8 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-slate-200 rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-white" />
@@ -325,13 +348,153 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Erreur générale */}
           {errors.form && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-red-600">
                 <AlertCircle className="w-5 h-5" />
                 <span className="font-medium">{errors.form}</span>
               </div>
+            </div>
+          )}
+
+          {/* Type de don */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">
+              Type de don *
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: 'MONETAIRE', label: 'Monétaire', icon: '💰', desc: 'Don en argent' },
+                { value: 'VIVRES', label: 'Vivres', icon: '🍎', desc: 'Nourriture' },
+                { value: 'NON_VIVRES', label: 'Matériel', icon: '📚', desc: 'Équipements' }
+              ].map(type => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => handleInputChange('type', type.value)}
+                  className={`p-4 border-2 rounded-xl text-center transition-all ${
+                    formData.type === type.value
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">{type.icon}</div>
+                  <div className="text-sm font-semibold">{type.label}</div>
+                  <div className="text-xs text-slate-500 mt-1">{type.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Montant (si monétaire) */}
+          {formData.type === 'MONETAIRE' && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border-2 border-green-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">
+                💰 Montant en Ariary *
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={formData.montant}
+                  onChange={(e) => handleInputChange('montant', e.target.value)}
+                  placeholder="Exemple: 500000"
+                  className={`w-full px-4 py-4 pr-16 border-2 rounded-xl text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                    errors.montant ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-emerald-500 bg-white'
+                  }`}
+                />
+                <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 font-bold text-lg">
+                  Ar
+                </span>
+              </div>
+              {formData.montant && (
+                <div className="mt-3 p-3 bg-white rounded-lg border border-green-200">
+                  <p className="text-sm text-slate-600">
+                    Montant: <span className="font-bold text-green-600 text-lg">{formatNumber(formData.montant)} Ariary</span>
+                  </p>
+                </div>
+              )}
+              {errors.montant && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.montant}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Articles (si vivres ou non-vivres) */}
+          {(formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+              <label className="block text-sm font-semibold text-slate-700 mb-3">
+                📦 Articles à donner *
+              </label>
+              
+              {formData.items.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-sm text-slate-600 font-medium">Articles ajoutés ({formData.items.length}):</p>
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <span className="text-lg">{formData.type === 'VIVRES' ? '🍎' : '📚'}</span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-800">{item.name}</p>
+                          <p className="text-sm text-slate-500">Quantité: {item.quantity}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3 bg-white p-4 rounded-xl border-2 border-dashed border-blue-300">
+                <p className="text-sm font-medium text-slate-700">Ajouter un article</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={currentItem.name}
+                      onChange={(e) => setCurrentItem(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder={formData.type === 'VIVRES' ? 'Ex: Riz, Huile...' : 'Ex: Cahiers, Stylos...'}
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      value={currentItem.quantity}
+                      onChange={(e) => setCurrentItem(prev => ({ ...prev, quantity: e.target.value }))}
+                      placeholder="Quantité"
+                      min="1"
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium"
+                >
+                  <Plus className="w-5 h-5" />
+                  Ajouter cet article
+                </button>
+              </div>
+
+              {errors.items && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.items}
+                </p>
+              )}
             </div>
           )}
 
@@ -351,13 +514,13 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
                     onClick={() => handleInputChange('destinationType', type)}
                     className={`p-4 border-2 rounded-xl text-left transition-all ${
                       formData.destinationType === type
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <TypeIcon className="w-5 h-5" />
-                      <span className="font-medium">{typeInfo.label}</span>
+                      <span className="font-semibold text-sm">{typeInfo.label}</span>
                     </div>
                     <p className="text-xs text-slate-500">{typeInfo.desc}</p>
                   </button>
@@ -366,149 +529,144 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Type de don */}
-          <div>
+          {/* Sélection du bénéficiaire AVEC RECHERCHE */}
+          <div ref={dropdownRef}>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
-              Type de don *
+              Bénéficiaire * <span className="text-xs font-normal text-slate-500">(Tapez pour rechercher)</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { value: 'MONETAIRE', label: 'Monétaire', icon: '💰', desc: 'Don en argent' },
-                { value: 'VIVRES', label: 'Vivres', icon: '🍎', desc: 'Nourriture' },
-                { value: 'NON_VIVRES', label: 'Matériel', icon: '📚', desc: 'Équipements' }
-              ].map(type => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => handleInputChange('type', type.value)}
-                  className={`p-3 border-2 rounded-xl text-center transition-all ${
-                    formData.type === type.value
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{type.icon}</div>
-                  <div className="text-sm font-medium">{type.label}</div>
-                  <div className="text-xs text-slate-500">{type.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Montant (si monétaire) */}
-          {formData.type === 'MONETAIRE' && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Montant en Ariary *
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={formData.montant}
-                  onChange={(e) => handleInputChange('montant', e.target.value)}
-                  placeholder="Ex: 500000"
-                  className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                    errors.montant ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-emerald-500'
-                  }`}
-                />
-                <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 font-medium">
-                  Ar
-                </span>
-              </div>
-              {formData.montant && (
-                <p className="mt-1 text-sm text-emerald-600">
-                  Soit: {formatNumber(formData.montant)} Ariary
-                </p>
-              )}
-              {errors.montant && (
-                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.montant}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Quantité (si vivres ou non-vivres) */}
-          {(formData.type === 'VIVRES' || formData.type === 'NON_VIVRES') && (
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Quantité *
-              </label>
-              <input
-                type="number"
-                value={formData.quantite}
-                onChange={(e) => handleInputChange('quantite', e.target.value)}
-                placeholder="Nombre d'unités"
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                  errors.quantite ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-emerald-500'
-                }`}
-              />
-              {errors.quantite && (
-                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.quantite}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Libellé/Description */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Description du don *
-            </label>
-            <input
-              type="text"
-              value={formData.libelle}
-              onChange={(e) => handleInputChange('libelle', e.target.value)}
-              placeholder={formData.type === 'MONETAIRE' ? "Auto-généré à partir du montant" : "Ex: Don de cahiers et stylos"}
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                errors.libelle ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-emerald-500'
-              }`}
-              readOnly={formData.type === 'MONETAIRE' && formData.montant}
-            />
-            {formData.type === 'MONETAIRE' && (
-              <p className="mt-1 text-xs text-slate-500">
-                La description est générée automatiquement pour les dons monétaires
-              </p>
-            )}
-            {errors.libelle && (
-              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {errors.libelle}
-              </p>
-            )}
-          </div>
-
-          {/* Destination spécifique */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              {getDestinationTypeInfo(formData.destinationType).label} *
-            </label>
+            
             {loadingDestinations ? (
               <div className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600 mr-2"></div>
                 <span className="text-slate-600">Chargement...</span>
               </div>
             ) : (
-              <select
-                value={formData.destinationId}
-                onChange={(e) => handleInputChange('destinationId', e.target.value)}
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
-                  errors.destinationId ? 'border-red-400 bg-red-50' : 'border-slate-200 focus:border-emerald-500'
-                }`}
-              >
-                <option value="">
-                  {getDestinationTypeInfo(formData.destinationType).placeholder}
-                </option>
-                {getDestinationOptions().map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                {/* Barre de recherche */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    placeholder={getDestinationTypeInfo(formData.destinationType).placeholder}
+                    className="w-full pl-10 pr-10 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                  {isDropdownOpen ? (
+                    <ChevronUp 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 cursor-pointer"
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                  ) : (
+                    <ChevronDown 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 cursor-pointer"
+                      onClick={() => setIsDropdownOpen(true)}
+                    />
+                  )}
+                </div>
+
+                {/* Affichage de la sélection actuelle */}
+                {selectedDestination && !isDropdownOpen && (
+                  <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+                    <AvatarDisplay
+                      name={selectedDestination.nom || selectedDestination.fullName || selectedDestination.titre}
+                      avatar={null}
+                      size="sm"
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-800">
+                        {selectedDestination.nom || selectedDestination.fullName || selectedDestination.titre}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {selectedDestination.type || selectedDestination.niveau || selectedDestination.etablissementNom}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, destinationId: '' }));
+                        setSearchTerm('');
+                      }}
+                      className="text-red-600 hover:bg-red-50 p-2 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Dropdown des résultats */}
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-2 max-h-80 overflow-y-auto bg-white border-2 border-slate-200 rounded-xl shadow-xl z-50">
+                    {displayedDestinations.length === 0 ? (
+                      <div className="p-6 text-center text-slate-500">
+                        {searchTerm ? 
+                          `Aucun résultat pour "${searchTerm}"` : 
+                          `Aucun ${getDestinationTypeInfo(formData.destinationType).label.toLowerCase()} disponible`
+                        }
+                      </div>
+                    ) : (
+                      <>
+                        {displayedDestinations.map(option => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              handleInputChange('destinationId', option.id);
+                              setIsDropdownOpen(false);
+                              setSearchTerm('');
+                            }}
+                            className={`w-full p-3 text-left transition-all flex items-center gap-3 border-b border-slate-100 last:border-b-0 ${
+                              formData.destinationId === option.id
+                                ? 'bg-emerald-50'
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            {/* Avatar avec AvatarDisplay */}
+                            <AvatarDisplay
+                              name={option.nom || option.fullName || option.titre}
+                              avatar={null}
+                              size="sm"
+                            />
+                            
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-slate-800 truncate">
+                                {option.nom || option.fullName || option.titre}
+                              </p>
+                              {(option.type || option.niveau || option.etablissementNom) && (
+                                <p className="text-sm text-slate-500 truncate">
+                                  {option.type || option.niveau || option.etablissementNom}
+                                </p>
+                              )}
+                            </div>
+
+                            {formData.destinationId === option.id && (
+                              <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                        
+                        {/* Indicateur si plus de résultats */}
+                        {filteredDestinations.length > 10 && (
+                          <div className="p-3 bg-slate-50 text-center text-sm text-slate-600">
+                            {filteredDestinations.length - 10} autre(s) résultat(s). 
+                            <span className="text-emerald-600 font-medium"> Affinez votre recherche.</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
+            
             {errors.destinationId && (
               <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
                 <AlertCircle className="w-4 h-4" />
@@ -529,15 +687,15 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                dragActive ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 hover:border-emerald-400'
+                dragActive ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-slate-50'
               }`}
             >
               <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 font-medium">
                 Glissez vos photos ici ou cliquez pour sélectionner
               </p>
-              <p className="text-xs text-slate-500">
-                JPG, PNG • Max 3 photos • 5MB chacune
+              <p className="text-xs text-slate-500 mt-1">
+                JPG, PNG • Max 5 photos • 5MB chacune
               </p>
               <input
                 ref={fileInputRef}
@@ -550,18 +708,18 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
 
             {formData.photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="grid grid-cols-5 gap-3 mt-3">
                 {formData.photos.map(photo => (
                   <div key={photo.id} className="relative group">
                     <img
                       src={photo.url}
                       alt={photo.name}
-                      className="w-full h-20 object-cover rounded-lg border"
+                      className="w-full h-20 object-cover rounded-lg border-2 border-slate-200"
                     />
                     <button
                       type="button"
                       onClick={() => removePhoto(photo.id)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -573,26 +731,26 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
+        <div className="sticky bottom-0 bg-white flex items-center justify-between gap-3 p-6 border-t border-slate-200 rounded-b-2xl">
           <button
             onClick={onClose}
-            className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+            className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 font-medium transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+            className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold"
           >
             {isSubmitting ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Création...
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Création en cours...
               </>
             ) : (
               <>
-                <Heart className="w-4 h-4" />
+                <Heart className="w-5 h-5" />
                 Créer le don
               </>
             )}
@@ -603,4 +761,4 @@ const DonationModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-export default DonationModal;
+export default ImprovedDonationModalV2;

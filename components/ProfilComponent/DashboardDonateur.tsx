@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
-import DonationModal from "../donations/DonationModal";
-import DonationStatusManager from "../donations/DonationStatusManager";
+// import DonationModal from "../donations/DonationModal";
+// import DonationStatusManager from "../donations/DonationStatusManager";
 import { useDonationStats } from "@/lib/hooks/useDonationStats";
 import { AvatarDisplay } from "@/components/AvatarDisplay";
+import UpdatedDonationStatusManager from "../donations/DonationStatusManager";
+import ImprovedDonationModalV2 from "../donations/DonationModal";
+// import ImprovedDonationModal from "../donations/DonationModal";
 
 type DonateurDashboardProps = {
   user: {
@@ -236,7 +239,7 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
                     </p>
                   </div>
                   <div className="p-6">
-                    <DonationStatusManager
+                    <UpdatedDonationStatusManager
                       donations={donations}
                       onStatusUpdate={handleStatusUpdate}
                       userType="DONATEUR"
@@ -529,7 +532,7 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
         </aside>
       </div>
 
-      <DonationModal
+      <ImprovedDonationModalV2
         isOpen={isDonationModalOpen}
         onClose={() => setIsDonationModalOpen(false)}
         onSuccess={handleDonationSuccess}
