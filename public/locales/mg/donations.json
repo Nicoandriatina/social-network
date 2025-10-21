@@ -1,0 +1,65 @@
+{
+  "title": "Fanomezana",
+  "make_donation": "Hanome",
+  "my_donations": "Ny fanomezako",
+  "received_donations": "Fanomezana voaray",
+  "types": {
+    "monetaire": "Vola",
+    "vivres": "Sakafo",
+    "non_vivres": "Fitaovana"
+  },
+  "status": {
+    "en_attente": "Miandry",
+    "envoye": "Nalefa",
+    "receptionne": "Voaray"
+  },
+  "form": {
+    "title": "Hanome",
+    "select_destination": "Hifidy toerana",
+    "destination_types": {
+      "project": "Ho amin'ny tetikasa",
+      "etablissement": "Ho amin'ny andrim-panjakana",
+      "personnel": "Ho amin'ny mpiasa"
+    },
+    "select_type": "Karazana fanomezana",
+    "amount": "Vola (Ar)",
+    "items": "Zavatra homena",
+    "add_item": "Hanampy zavatra",
+    "item_name": "Anaran'ny zavatra",
+    "item_quantity": "Isa",
+    "photos": "Sary (tsy tsy maintsy)",
+    "submit": "Hanamarina ny fanomezana",
+    "success": "Voaray soa aman-tsara ny fanomezana!",
+    "errors": {
+      "required_destination": "Ilaina ny toerana",
+      "required_type": "Ilaina ny karazana fanomezana",
+      "required_amount": "Ilaina ny vola",
+      "required_items": "Ilaina ny zavatra iray farafahakeliny",
+      "invalid_amount": "Ny vola dia tokony ho isa tsara"
+    }
+  },
+  "details": {
+    "donor": "Mpanome",
+    "recipient": "Mpandray",
+    "date_sent": "Daty nandefasana",
+    "date_received": "Daty nandraisana",
+    "items_list": "Lisitry ny zavatra"
+  },
+  "actions": {
+    "mark_sent": "Marihina ho nalefa",
+    "mark_received": "Marihina ho voaray",
+    "view_details": "Hijery ny antsipiriany"
+  },
+  "stats": {
+    "total": "Fanomezana rehetra",
+    "pending": "Miandry",
+    "sent": "Nalefa",
+    "received": "Voaray",
+    "unique_donors": "Mpanome samihafa"
+  },
+  "empty_state": {
+    "no_donations": "Tsy mbola misy fanomezana",
+    "no_received": "Tsy mbola misy fanomezana voaray",
+    "be_first": "Aoka ho voalohany hanome!"
+  }
+}

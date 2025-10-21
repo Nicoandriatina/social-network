@@ -1,0 +1,72 @@
+{
+  "title": "Tetikasa",
+  "create_project": "Hamorona tetikasa",
+  "my_projects": "Ny tetikasako",
+  "all_projects": "Tetikasa rehetra",
+  "filter": {
+    "category": "Sokajy",
+    "status": "Toe-javatra",
+    "region": "Faritra",
+    "search_placeholder": "Hitady tetikasa..."
+  },
+  "categories": {
+    "construction": "Fanorenana",
+    "rehabilitation": "Fanavaozana",
+    "autres": "Hafa"
+  },
+  "status": {
+    "active": "Mihetsika",
+    "completed": "Vita",
+    "pending": "Miandry"
+  },
+  "details": {
+    "description": "Famaritana",
+    "budget": "Vola tetezamita",
+    "start_date": "Daty fanombohana",
+    "end_date": "Daty famaranana",
+    "donations_received": "Fanomezana voaray",
+    "donors": "Mpanome"
+  },
+  "actions": {
+    "donate": "Hanome",
+    "view_details": "Hijery ny antsipiriany",
+    "edit": "Hanova",
+    "share": "Hizara",
+    "delete": "Hamafa"
+  },
+  "form": {
+    "title": "Hamoaka tetikasa vaovao",
+    "reference": "Kaody tetikasa",
+    "reference_placeholder": "REF-2024-001",
+    "generate_reference": "Hamorona",
+    "category_label": "Sokajy",
+    "category_placeholder": "Safidio ny sokajy",
+    "project_title": "Lohateny tetikasa",
+    "project_title_placeholder": "Oh: Fanavaozana ny trano famakiam-boky",
+    "description": "Famaritana feno",
+    "description_placeholder": "Hazavao ny tetikasanao...",
+    "photos": "Sary tetikasa",
+    "photos_instructions": "Ataovy eto ny sary na kitiho",
+    "start_date": "Daty fanombohana",
+    "end_date": "Daty famaranana",
+    "budget_label": "Vola tetezamita (Ar)",
+    "submit": "Hamoaka ny tetikasa",
+    "save_draft": "Hitahiry ho draft",
+    "success": "Voavoaka soa aman-tsara ny tetikasa!",
+    "errors": {
+      "required_reference": "Ilaina ny kaody",
+      "required_category": "Ilaina ny sokajy",
+      "required_title": "Ilaina ny lohateny",
+      "title_too_short": "Ny lohateny dia mila 10 litera farafahakeliny",
+      "required_description": "Ilaina ny famaritana",
+      "description_too_short": "Ny famaritana dia mila 50 litera farafahakeliny",
+      "required_photos": "Ilaina ny sary iray farafahakeliny",
+      "invalid_dates": "Ny daty famaranana dia tokony aorian'ny daty fanombohana"
+    }
+  },
+  "empty_state": {
+    "title": "Tsy misy tetikasa",
+    "description": "Tsy mbola misy tetikasa voavoaka.",
+    "action": "Hamorona tetikasa"
+  }
+}

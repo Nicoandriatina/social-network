@@ -1,0 +1,22 @@
+{
+  "title": "Messages",
+  "conversations": "Conversations",
+  "new_message": "New message",
+  "search_placeholder": "Search conversations...",
+  "type_message": "Type a message...",
+  "send": "Send",
+  "online": "Online",
+  "offline": "Offline",
+  "typing": "Typing...",
+  "no_conversations": "No conversations",
+  "no_conversations_desc": "Start a conversation by sending a message to your friends",
+  "select_conversation": "Select a conversation",
+  "friends_only": "You can only send messages to your friends",
+  "empty_message": "Message cannot be empty",
+  "message_sent": "Message sent",
+  "message_failed": "Failed to send",
+  "delete_message": "Delete message",
+  "delete_confirm": "Are you sure you want to delete this message?",
+  "unread": "{{count}} unread",
+  "unread_plural": "{{count}} unread"
+}

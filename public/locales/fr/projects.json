@@ -1,0 +1,72 @@
+{
+  "title": "Projets",
+  "create_project": "Créer un projet",
+  "my_projects": "Mes projets",
+  "all_projects": "Tous les projets",
+  "filter": {
+    "category": "Catégorie",
+    "status": "Statut",
+    "region": "Région",
+    "search_placeholder": "Rechercher un projet..."
+  },
+  "categories": {
+    "construction": "Construction",
+    "rehabilitation": "Réhabilitation",
+    "autres": "Autres"
+  },
+  "status": {
+    "active": "Actif",
+    "completed": "Terminé",
+    "pending": "En attente"
+  },
+  "details": {
+    "description": "Description",
+    "budget": "Budget estimé",
+    "start_date": "Date de début",
+    "end_date": "Date de fin",
+    "donations_received": "Dons reçus",
+    "donors": "Donateurs"
+  },
+  "actions": {
+    "donate": "Faire un don",
+    "view_details": "Voir les détails",
+    "edit": "Modifier",
+    "share": "Partager",
+    "delete": "Supprimer"
+  },
+  "form": {
+    "title": "Publier un nouveau projet",
+    "reference": "Référence du projet",
+    "reference_placeholder": "REF-2024-001",
+    "generate_reference": "Générer",
+    "category_label": "Catégorie",
+    "category_placeholder": "Sélectionnez une catégorie",
+    "project_title": "Titre du projet",
+    "project_title_placeholder": "Ex: Rénovation de la bibliothèque",
+    "description": "Description détaillée",
+    "description_placeholder": "Décrivez votre projet...",
+    "photos": "Photos du projet",
+    "photos_instructions": "Glissez vos photos ici ou cliquez pour sélectionner",
+    "start_date": "Date de début souhaitée",
+    "end_date": "Date de fin souhaitée",
+    "budget_label": "Budget estimé (Ar)",
+    "submit": "Publier le projet",
+    "save_draft": "Enregistrer comme brouillon",
+    "success": "Projet publié avec succès !",
+    "errors": {
+      "required_reference": "La référence est obligatoire",
+      "required_category": "La catégorie est obligatoire",
+      "required_title": "Le titre est obligatoire",
+      "title_too_short": "Le titre doit contenir au moins 10 caractères",
+      "required_description": "La description est obligatoire",
+      "description_too_short": "La description doit contenir au moins 50 caractères",
+      "required_photos": "Au moins une photo est requise",
+      "invalid_dates": "La date de fin doit être postérieure à la date de début"
+    }
+  },
+  "empty_state": {
+    "title": "Aucun projet disponible",
+    "description": "Il n'y a actuellement aucun projet publié.",
+    "action": "Créer un projet"
+  }
+}

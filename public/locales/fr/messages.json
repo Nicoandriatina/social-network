@@ -1,0 +1,22 @@
+{
+  "title": "Messages",
+  "conversations": "Conversations",
+  "new_message": "Nouveau message",
+  "search_placeholder": "Rechercher une conversation...",
+  "type_message": "Écrire un message...",
+  "send": "Envoyer",
+  "online": "En ligne",
+  "offline": "Hors ligne",
+  "typing": "En train d'écrire...",
+  "no_conversations": "Aucune conversation",
+  "no_conversations_desc": "Commencez une conversation en envoyant un message à vos amis",
+  "select_conversation": "Sélectionnez une conversation",
+  "friends_only": "Vous ne pouvez envoyer des messages qu'à vos amis",
+  "empty_message": "Le message ne peut pas être vide",
+  "message_sent": "Message envoyé",
+  "message_failed": "Échec de l'envoi",
+  "delete_message": "Supprimer le message",
+  "delete_confirm": "Êtes-vous sûr de vouloir supprimer ce message ?",
+  "unread": "{{count}} non lu",
+  "unread_plural": "{{count}} non lus"
+}

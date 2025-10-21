@@ -1,0 +1,72 @@
+{
+  "title": "Projects",
+  "create_project": "Create project",
+  "my_projects": "My projects",
+  "all_projects": "All projects",
+  "filter": {
+    "category": "Category",
+    "status": "Status",
+    "region": "Region",
+    "search_placeholder": "Search for a project..."
+  },
+  "categories": {
+    "construction": "Construction",
+    "rehabilitation": "Rehabilitation",
+    "autres": "Others"
+  },
+  "status": {
+    "active": "Active",
+    "completed": "Completed",
+    "pending": "Pending"
+  },
+  "details": {
+    "description": "Description",
+    "budget": "Estimated budget",
+    "start_date": "Start date",
+    "end_date": "End date",
+    "donations_received": "Donations received",
+    "donors": "Donors"
+  },
+  "actions": {
+    "donate": "Donate",
+    "view_details": "View details",
+    "edit": "Edit",
+    "share": "Share",
+    "delete": "Delete"
+  },
+  "form": {
+    "title": "Publish a new project",
+    "reference": "Project reference",
+    "reference_placeholder": "REF-2024-001",
+    "generate_reference": "Generate",
+    "category_label": "Category",
+    "category_placeholder": "Select a category",
+    "project_title": "Project title",
+    "project_title_placeholder": "Ex: Library renovation",
+    "description": "Detailed description",
+    "description_placeholder": "Describe your project...",
+    "photos": "Project photos",
+    "photos_instructions": "Drag photos here or click to select",
+    "start_date": "Desired start date",
+    "end_date": "Desired end date",
+    "budget_label": "Estimated budget (Ar)",
+    "submit": "Publish project",
+    "save_draft": "Save as draft",
+    "success": "Project published successfully!",
+    "errors": {
+      "required_reference": "Reference is required",
+      "required_category": "Category is required",
+      "required_title": "Title is required",
+      "title_too_short": "Title must be at least 10 characters",
+      "required_description": "Description is required",
+      "description_too_short": "Description must be at least 50 characters",
+      "required_photos": "At least one photo is required",
+      "invalid_dates": "End date must be after start date"
+    }
+  },
+  "empty_state": {
+    "title": "No projects available",
+    "description": "There are currently no published projects.",
+    "action": "Create a project"
+  }
+}

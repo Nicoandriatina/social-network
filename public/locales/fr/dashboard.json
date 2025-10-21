@@ -1,0 +1,12 @@
+{
+  "welcome": "Bienvenue, {{name}}",
+  "statistics": {
+    "title": "Statistiques",
+    "projects": "Projets",
+    "donations": "Dons",
+    "members": "Membres"
+  },
+  "recent_activity": "Activité récente",
+  "quick_actions": "Actions rapides",
+  "view_all": "Voir tout"
+}

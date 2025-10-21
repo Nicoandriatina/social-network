@@ -1,0 +1,12 @@
+{
+  "welcome": "Welcome, {{name}}",
+  "statistics": {
+    "title": "Statistics",
+    "projects": "Projects",
+    "donations": "Donations",
+    "members": "Members"
+  },
+  "recent_activity": "Recent activity",
+  "quick_actions": "Quick actions",
+  "view_all": "View all"
+}

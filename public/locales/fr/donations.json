@@ -1,0 +1,65 @@
+{
+  "title": "Dons",
+  "make_donation": "Faire un don",
+  "my_donations": "Mes dons",
+  "received_donations": "Dons reçus",
+  "types": {
+    "monetaire": "Monétaire",
+    "vivres": "Vivres",
+    "non_vivres": "Matériel"
+  },
+  "status": {
+    "en_attente": "En attente",
+    "envoye": "Envoyé",
+    "receptionne": "Reçu"
+  },
+  "form": {
+    "title": "Faire un don",
+    "select_destination": "Choisir la destination",
+    "destination_types": {
+      "project": "Vers un projet",
+      "etablissement": "Vers un établissement",
+      "personnel": "Vers un personnel"
+    },
+    "select_type": "Type de don",
+    "amount": "Montant (Ar)",
+    "items": "Articles à donner",
+    "add_item": "Ajouter un article",
+    "item_name": "Nom de l'article",
+    "item_quantity": "Quantité",
+    "photos": "Photos (optionnel)",
+    "submit": "Confirmer le don",
+    "success": "Don créé avec succès !",
+    "errors": {
+      "required_destination": "La destination est obligatoire",
+      "required_type": "Le type de don est obligatoire",
+      "required_amount": "Le montant est obligatoire",
+      "required_items": "Au moins un article est requis",
+      "invalid_amount": "Le montant doit être positif"
+    }
+  },
+  "details": {
+    "donor": "Donateur",
+    "recipient": "Bénéficiaire",
+    "date_sent": "Date d'envoi",
+    "date_received": "Date de réception",
+    "items_list": "Liste des articles"
+  },
+  "actions": {
+    "mark_sent": "Marquer comme envoyé",
+    "mark_received": "Marquer comme reçu",
+    "view_details": "Voir les détails"
+  },
+  "stats": {
+    "total": "Total des dons",
+    "pending": "En attente",
+    "sent": "Envoyés",
+    "received": "Reçus",
+    "unique_donors": "Donateurs uniques"
+  },
+  "empty_state": {
+    "no_donations": "Aucun don pour le moment",
+    "no_received": "Aucun don reçu",
+    "be_first": "Soyez le premier à faire un don !"
+  }
+}

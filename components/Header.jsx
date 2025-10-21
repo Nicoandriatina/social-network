@@ -812,8 +812,12 @@ import { useSocket } from "@/app/contexts/SocketContext";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import NotificationsDropdown from "./Notifications";
+// import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
+// import LanguageSwitcher from "./LangageSwitcher";
 
 const HeaderWithDropdown = ({ user, userType = "etablissement" }) => {
+  const { t } = useTranslation('common');
   const { socket, isConnected } = useSocket();
   const pathname = usePathname();
   const router = useRouter();
@@ -1300,6 +1304,7 @@ const HeaderWithDropdown = ({ user, userType = "etablissement" }) => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            {/* <LanguageSwitcher /> */}
             {/* Recherche */}
             <button
               onClick={() => {

@@ -1,0 +1,22 @@
+{
+  "title": "Hafatra",
+  "conversations": "Resaka",
+  "new_message": "Hafatra vaovao",
+  "search_placeholder": "Hitady resaka...",
+  "type_message": "Manoratra hafatra...",
+  "send": "Handefa",
+  "online": "Eto",
+  "offline": "Tsy eto",
+  "typing": "Manoratra...",
+  "no_conversations": "Tsy misy resaka",
+  "no_conversations_desc": "Manomboka resaka amin'ny alalan'ny fandefasana hafatra amin'ny namanao",
+  "select_conversation": "Hifidy resaka",
+  "friends_only": "Afaka mandefa hafatra amin'ny namanao ihany ianao",
+  "empty_message": "Tsy afaka ho foana ny hafatra",
+  "message_sent": "Lasa ny hafatra",
+  "message_failed": "Tsy nahomby ny fandefasana",
+  "delete_message": "Hamafa ny hafatra",
+  "delete_confirm": "Tena hamafa ity hafatra ity ve ianao?",
+  "unread": "{{count}} tsy voavaky",
+  "unread_plural": "{{count}} tsy voavaky"
+}

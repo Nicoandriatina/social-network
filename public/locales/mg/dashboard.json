@@ -1,0 +1,12 @@
+{
+  "welcome": "Tonga soa, {{name}}",
+  "statistics": {
+    "title": "Antontan-tsoratra",
+    "projects": "Tetikasa",
+    "donations": "Fanomezana",
+    "members": "Mpikambana"
+  },
+  "recent_activity": "Hetsika farany",
+  "quick_actions": "Hetsika haingana",
+  "view_all": "Hijery daholo"
+}

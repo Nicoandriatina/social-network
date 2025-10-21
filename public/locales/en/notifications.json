@@ -1,0 +1,47 @@
+{
+  "title": "Notifications",
+  "mark_all_read": "Mark all as read",
+  "no_notifications": "No notifications",
+  "view_all": "View all notifications",
+  "types": {
+    "project_published": {
+      "title": "New project published",
+      "content": "{{userName}} published a new project: {{projectTitle}}"
+    },
+    "donation_received": {
+      "title": "Donation received",
+      "content": "You received a donation from {{donorName}}"
+    },
+    "friend_request": {
+      "title": "Friend request",
+      "content": "{{userName}} sent you a friend request"
+    },
+    "friend_accepted": {
+      "title": "Request accepted",
+      "content": "{{userName}} accepted your friend request"
+    },
+    "project_comment": {
+      "title": "New comment",
+      "content": "{{userName}} commented on your project: {{projectTitle}}"
+    },
+    "project_like": {
+      "title": "New like",
+      "content": "{{userName}} liked your project: {{projectTitle}}"
+    },
+    "message_received": {
+      "title": "New message",
+      "content": "{{userName}} sent you a message"
+    }
+  },
+  "time": {
+    "just_now": "Just now",
+    "minutes_ago": "{{count}} minute ago",
+    "minutes_ago_plural": "{{count}} minutes ago",
+    "hours_ago": "{{count}} hour ago",
+    "hours_ago_plural": "{{count}} hours ago",
+    "days_ago": "{{count}} day ago",
+    "days_ago_plural": "{{count}} days ago",
+    "weeks_ago": "{{count}} week ago",
+    "weeks_ago_plural": "{{count}} weeks ago"
+  }
+}

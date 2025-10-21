@@ -1,0 +1,65 @@
+{
+  "title": "Donations",
+  "make_donation": "Make a donation",
+  "my_donations": "My donations",
+  "received_donations": "Received donations",
+  "types": {
+    "monetaire": "Monetary",
+    "vivres": "Food",
+    "non_vivres": "Materials"
+  },
+  "status": {
+    "en_attente": "Pending",
+    "envoye": "Sent",
+    "receptionne": "Received"
+  },
+  "form": {
+    "title": "Make a donation",
+    "select_destination": "Choose destination",
+    "destination_types": {
+      "project": "To a project",
+      "etablissement": "To an institution",
+      "personnel": "To staff"
+    },
+    "select_type": "Donation type",
+    "amount": "Amount (Ar)",
+    "items": "Items to donate",
+    "add_item": "Add item",
+    "item_name": "Item name",
+    "item_quantity": "Quantity",
+    "photos": "Photos (optional)",
+    "submit": "Confirm donation",
+    "success": "Donation created successfully!",
+    "errors": {
+      "required_destination": "Destination is required",
+      "required_type": "Donation type is required",
+      "required_amount": "Amount is required",
+      "required_items": "At least one item is required",
+      "invalid_amount": "Amount must be positive"
+    }
+  },
+  "details": {
+    "donor": "Donor",
+    "recipient": "Recipient",
+    "date_sent": "Date sent",
+    "date_received": "Date received",
+    "items_list": "Items list"
+  },
+  "actions": {
+    "mark_sent": "Mark as sent",
+    "mark_received": "Mark as received",
+    "view_details": "View details"
+  },
+  "stats": {
+    "total": "Total donations",
+    "pending": "Pending",
+    "sent": "Sent",
+    "received": "Received",
+    "unique_donors": "Unique donors"
+  },
+  "empty_state": {
+    "no_donations": "No donations yet",
+    "no_received": "No donations received",
+    "be_first": "Be the first to donate!"
+  }
+}
