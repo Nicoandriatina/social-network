@@ -39,7 +39,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import KeyboardShortcutsModal from "@/components/KeyboardShortcutsModal";
-import I18nProvider from "@/components/providers/I18nProvider";
+// import I18nProvider from "@/components/providers/I18nProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,13 +63,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
+      <head>
+        {/* Meta tags pour Google Translate */}
+        <meta name="google" content="notranslate" />
+        <meta httpEquiv="Content-Language" content="fr" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 antialiased`}
       >
-        <I18nProvider>
+       
+
           {children}
           <KeyboardShortcutsModal />
-        </I18nProvider>
+        
       </body>
     </html>
   );
