@@ -159,7 +159,7 @@ export default function ProfileViewDonateur({
   };
 
   const handleSendMessage = () => {
-    router.push(`/messages?userId=${profile.id}`);
+    router.push(`/dashboard/messages?userId=${profile.id}`);
   };
 
   const formatMontant = (montant: number | null) => {

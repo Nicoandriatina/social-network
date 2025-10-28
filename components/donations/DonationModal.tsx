@@ -574,7 +574,7 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
                   <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
                     <AvatarDisplay
                       name={selectedDestination.nom || selectedDestination.fullName || selectedDestination.titre}
-                      avatar={null}
+                      avatar={selectedDestination.avatar}
                       size="sm"
                     />
                     <div className="flex-1">
@@ -628,7 +628,7 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
                             {/* Avatar avec AvatarDisplay */}
                             <AvatarDisplay
                               name={option.nom || option.fullName || option.titre}
-                              avatar={null}
+                              avatar={option.avatar}
                               size="sm"
                             />
                             

@@ -1,4 +1,3 @@
-
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +14,8 @@ export default async function DashboardMessagesPage() {
     where: { id: auth.id },
     select: { 
       id: true,
-      fullName: true, 
+      fullName: true,
+      avatar: true,
       type: true,
       etablissement: {
         select: {
@@ -33,15 +33,16 @@ export default async function DashboardMessagesPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-
-      
+    // ✅ CORRECTION : Utiliser calc() pour soustraire la hauteur du header
+    // Supposons que le header fait environ 72px de hauteur
+    <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 72px)' }}>
       {/* Page de messages sans son propre header */}
       <div className="flex-1 overflow-hidden">
         <MessagesPage 
           currentUserId={auth.id}
           currentUser={{ 
             fullName: user.fullName, 
+            avatar: user.avatar,
             type: user.type 
           }} 
         />

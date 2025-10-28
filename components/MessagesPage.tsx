@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Search, Plus, X, Paperclip, Image as ImageIcon, Smile, Phone, Video, Settings } from 'lucide-react';
 import { useSocket } from '@/app/contexts/SocketContext';
+import { AvatarDisplay, AvatarBadge } from '@/components/AvatarDisplay';
 
 interface User {
   id: string;
@@ -29,6 +30,7 @@ interface MessagesPageProps {
   currentUserId: string;
   currentUser?: {
     fullName: string;
+    avatar?: string | null;  // ✅ Ajouter l'avatar
     type: string;
   };
 }
@@ -51,9 +53,31 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
   const [friendSearchTerm, setFriendSearchTerm] = useState('');
   const [loadingFriends, setLoadingFriends] = useState(false);
 
+  // ✅ État pour stocker l'avatar de l'utilisateur connecté
+  const [myAvatar, setMyAvatar] = useState<string | null>(currentUser?.avatar || null);
   useEffect(() => {
     loadConversations();
-  }, []);
+    
+    // 🔍 Récupérer l'avatar de l'utilisateur connecté au cas où il n'est pas passé
+    const fetchMyAvatar = async () => {
+      try {
+        const response = await fetch('/api/user/me');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('🔍 Avatar récupéré de /api/user/me:', data.user?.avatar);
+          if (data.user?.avatar) {
+            setMyAvatar(data.user.avatar);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erreur récupération avatar:', error);
+      }
+    };
+    
+    if (!myAvatar) {
+      fetchMyAvatar();
+    }
+  }, [myAvatar]);
 
   useEffect(() => {
     if (currentChat) {
@@ -72,8 +96,22 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
       console.log('📨 Nouveau message reçu:', message);
       
       if (currentChat && 
-          (message.fromId === currentChat.user.id || message.toId === currentChat.user.id)) {
-        setMessages(prev => [...prev, message]);
+          (message.fromId === currentChat.user.id || message.fromId === currentUserId)) {
+        // ✅ Éviter les doublons - ne pas ajouter si c'est notre propre message déjà affiché
+        setMessages(prev => {
+          // Vérifier si le message existe déjà
+          const exists = prev.some(m => 
+            m.content === message.content && 
+            m.fromId === message.fromId &&
+            Math.abs(new Date(m.sentAt).getTime() - new Date(message.sentAt).getTime()) < 1000
+          );
+          
+          if (exists) return prev;
+          
+          // Remplacer le message temporaire s'il existe
+          const withoutTemp = prev.filter(m => !m.id.startsWith('temp-'));
+          return [...withoutTemp, message];
+        });
       }
       
       loadConversations();
@@ -89,7 +127,7 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
       socket.off('new-message');
       socket.off('user-typing');
     };
-  }, [socket, currentChat]);
+  }, [socket, currentChat, currentUserId]);
 
   const loadConversations = async () => {
     try {
@@ -137,6 +175,23 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
       toId: currentChat.user.id,
       content: newMessage.trim()
     };
+
+    // ✅ Ajouter immédiatement le message localement avec l'avatar
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      content: newMessage.trim(),
+      sentAt: new Date().toISOString(),
+      fromId: currentUserId,
+      from: {
+        id: currentUserId,
+        fullName: currentUser?.fullName || 'Vous',
+        avatar: myAvatar,  // ✅ Utiliser l'avatar stocké
+        type: currentUser?.type || ''
+      }
+    };
+
+    // Ajouter le message à l'affichage immédiatement
+    setMessages(prev => [...prev, tempMessage]);
 
     socket.emit('send-message', messageData);
     
@@ -246,7 +301,7 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-slate-200">
+      <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50 to-slate-200">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -255,6 +310,7 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
   return (
     <>
       <div className="h-full bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex">
+        {/* ✅ Sidebar avec position relative pour le bouton */}
         <aside className="w-[350px] bg-white border-r border-slate-200 flex flex-col relative">
           <div className="p-6 border-b border-slate-200">
             <h2 className="text-2xl font-bold text-slate-800 mb-4">Messages</h2>
@@ -270,7 +326,8 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* ✅ Liste des conversations avec padding-bottom pour ne pas cacher le bouton + */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
             {filteredConversations.length === 0 ? (
               <div className="p-6 text-center text-slate-500">
                 <div className="text-4xl mb-2">💬</div>
@@ -288,13 +345,12 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                   }`}
                   onClick={() => setCurrentChat(conv)}
                 >
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg relative flex-shrink-0"
-                    style={{ background: getAvatarColor(conv.user.fullName) }}
-                  >
-                    {getInitials(conv.user.fullName)}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
-                  </div>
+                  {/* ✅ Utiliser AvatarBadge au lieu du div avec initiales */}
+                  <AvatarBadge
+                    name={conv.user.fullName}
+                    avatar={conv.user.avatar}
+                    size="md"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-slate-800 text-base mb-1">{conv.user.fullName}</div>
                     <div className="text-sm text-slate-500 truncate">{conv.lastMessage.content}</div>
@@ -312,9 +368,10 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
             )}
           </div>
 
+          {/* ✅ Bouton + repositionné : plus haut (bottom-20 au lieu de bottom-6) */}
           <button
             onClick={handleOpenNewChatModal}
-            className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all z-10"
+            className="absolute bottom-20 right-6 w-14 h-14 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all z-10"
           >
             <Plus size={26} strokeWidth={2.5} />
           </button>
@@ -323,15 +380,16 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
         <main className="flex-1 flex flex-col bg-white">
           {currentChat ? (
             <>
-              <div className="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-indigo-50/30 to-purple-50/30">
+              <div className="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-indigo-50/30 to-purple-50/30 flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-4">
-                    <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg"
-                      style={{ background: getAvatarColor(currentChat.user.fullName) }}
-                    >
-                      {getInitials(currentChat.user.fullName)}
-                    </div>
+                    {/* ✅ Utiliser AvatarDisplay pour le header du chat */}
+                    <AvatarDisplay
+                      name={currentChat.user.fullName}
+                      avatar={currentChat.user.avatar}
+                      size="md"
+                      showBorder={false}
+                    />
                     <div>
                       <h3 className="text-lg font-bold text-slate-800">{currentChat.user.fullName}</h3>
                       <p className="text-sm text-slate-600 flex items-center gap-2">
@@ -378,21 +436,27 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                     {messages.map((message) => {
                       const isSent = message.fromId === currentUserId;
                       
+                      // 🔍 DEBUG : Afficher les infos de chaque message
+                      console.log('🔍 Message à afficher:', {
+                        id: message.id,
+                        isSent,
+                        fromId: message.fromId,
+                        'message.from.avatar': message.from.avatar,
+                        'myAvatar': myAvatar,
+                        'Avatar utilisé': isSent ? myAvatar : message.from.avatar
+                      });
+                      
                       return (
                         <div
                           key={message.id}
                           className={`flex gap-3 mb-4 ${isSent ? 'flex-row-reverse' : ''}`}
                         >
-                          <div 
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-                            style={{ 
-                              background: isSent 
-                                ? 'linear-gradient(135deg, #667eea, #764ba2)' 
-                                : getAvatarColor(message.from.fullName)
-                            }}
-                          >
-                            {getInitials(isSent ? (currentUser?.fullName || 'Vous') : message.from.fullName)}
-                          </div>
+                          {/* ✅ Utiliser AvatarBadge pour les messages */}
+                          <AvatarBadge
+                            name={isSent ? (currentUser?.fullName || 'Vous') : message.from.fullName}
+                            avatar={isSent ? currentUser?.avatar : message.from.avatar}
+                            size="sm"
+                          />
                           <div className="flex flex-col gap-1 max-w-[70%]">
                             <div
                               className={`px-4 py-3 text-sm leading-relaxed break-words ${
@@ -414,12 +478,12 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
 
                     {isTyping && (
                       <div className="flex gap-3 mb-4">
-                        <div 
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-                          style={{ background: getAvatarColor(currentChat.user.fullName) }}
-                        >
-                          {getInitials(currentChat.user.fullName)}
-                        </div>
+                        {/* ✅ Utiliser AvatarBadge pour l'indicateur de frappe */}
+                        <AvatarBadge
+                          name={currentChat.user.fullName}
+                          avatar={currentChat.user.avatar}
+                          size="sm"
+                        />
                         <div className="bg-slate-100 px-4 py-3 rounded-[18px] rounded-bl-md">
                           <div className="flex gap-1">
                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -434,7 +498,8 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="px-6 py-5 border-t border-slate-200 bg-slate-50">
+              {/* ✅ Zone d'envoi avec flex-shrink-0 pour toujours être visible */}
+              <div className="px-6 py-5 border-t border-slate-200 bg-slate-50 flex-shrink-0">
                 <div className="flex items-end gap-3">
                   <div className="flex gap-2">
                     <button className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors">
@@ -447,7 +512,6 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                       <Smile size={18} />
                     </button>
                   </div>
-
 
                   <textarea
                     ref={textareaRef}
@@ -529,12 +593,13 @@ export default function MessagesPage({ currentUserId, currentUser }: MessagesPag
                       onClick={() => handleStartNewChat(friend)}
                       className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
                     >
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold flex-shrink-0"
-                        style={{ background: getAvatarColor(friend.fullName) }}
-                      >
-                        {getInitials(friend.fullName)}
-                      </div>
+                      {/* ✅ Utiliser AvatarDisplay pour la liste d'amis */}
+                      <AvatarDisplay
+                        name={friend.fullName}
+                        avatar={friend.avatar}
+                        size="md"
+                        showBorder={false}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-slate-800">{friend.fullName}</div>
                         <div className="text-sm text-slate-500">{friend.type}</div>
