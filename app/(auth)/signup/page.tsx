@@ -1,3 +1,4 @@
+//app/(auth)/signup/page.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -12,7 +13,7 @@ import EtablissementFields from "@/components/RegisterComponent/EtablissementFie
 import EnseignantFields from "@/components/RegisterComponent/EnseignantFields";
 import DonateurFields from "@/components/RegisterComponent/DonateurFields";
 import { useRouter } from "next/navigation";
-import { Rocket, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Rocket, AlertCircle, CheckCircle2, Loader2, X, Building2, GraduationCap, Heart } from "lucide-react";
 
 const baseFields = z.object({
   email: z.string().email("Email invalide"),
@@ -51,10 +52,154 @@ const formSchema = z.discriminatedUnion("profileType", [
   z.object({ profileType: z.literal("donateur") }).merge(baseFields).merge(donateurFields),
 ]);
 
+// Composant Modal Moderne
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: "success" | "error";
+  title: string;
+  message: string;
+  profileType?: string;
+}
+
+const SuccessModal = ({ isOpen, onClose, type, title, message, profileType }: ModalProps) => {
+  if (!isOpen) return null;
+
+  const getProfileIcon = () => {
+    switch (profileType) {
+      case "etablissement":
+        return <Building2 className="w-16 h-16 text-blue-500" />;
+      case "enseignant":
+        return <GraduationCap className="w-16 h-16 text-purple-500" />;
+      case "donateur":
+        return <Heart className="w-16 h-16 text-pink-500" />;
+      default:
+        return <CheckCircle2 className="w-16 h-16 text-green-500" />;
+    }
+  };
+
+  const getProfileLabel = () => {
+    switch (profileType) {
+      case "etablissement":
+        return "Compte Établissement";
+      case "enseignant":
+        return "Compte Enseignant";
+      case "donateur":
+        return "Compte Donateur";
+      default:
+        return "Nouveau Compte";
+    }
+  };
+
+  const getProfileColor = () => {
+    switch (profileType) {
+      case "etablissement":
+        return "from-blue-500 to-cyan-500";
+      case "enseignant":
+        return "from-purple-500 to-indigo-500";
+      case "donateur":
+        return "from-pink-500 to-rose-500";
+      default:
+        return "from-green-500 to-emerald-500";
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {/* Overlay */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-300">
+        {/* Bouton fermer */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X className="w-5 h-5 text-gray-500" />
+        </button>
+
+        {/* Contenu */}
+        <div className="text-center">
+          {/* Icône animée */}
+          <div className="mb-6 flex justify-center">
+            <div className="relative">
+              <div className={`absolute inset-0 bg-gradient-to-r ${getProfileColor()} rounded-full blur-xl opacity-50 animate-pulse`} />
+              <div className="relative bg-white rounded-full p-4 shadow-lg">
+                {type === "success" ? getProfileIcon() : <AlertCircle className="w-16 h-16 text-red-500" />}
+              </div>
+            </div>
+          </div>
+
+          {/* Badge type de compte */}
+          {profileType && type === "success" && (
+            <div className="mb-4">
+              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-white bg-gradient-to-r ${getProfileColor()} shadow-lg`}>
+                <CheckCircle2 className="w-4 h-4" />
+                {getProfileLabel()}
+              </span>
+            </div>
+          )}
+
+          {/* Titre */}
+          <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
+            {title}
+          </h2>
+
+          {/* Message */}
+          <p className="text-gray-600 text-lg leading-relaxed mb-6">
+            {message}
+          </p>
+
+          {/* Information supplémentaire pour enseignant */}
+          {profileType === "enseignant" && type === "success" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-left text-sm text-amber-800">
+                  <p className="font-semibold mb-1">Validation requise</p>
+                  <p>Votre établissement doit valider votre compte avant que vous puissiez accéder à toutes les fonctionnalités.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bouton */}
+          <button
+            onClick={onClose}
+            className={`w-full py-3 px-6 rounded-xl font-semibold text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 ${
+              type === "success"
+                ? `bg-gradient-to-r ${getProfileColor()} hover:shadow-xl`
+                : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+            }`}
+          >
+            {type === "success" ? "Continuer" : "Réessayer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function RegisterPage() {
   const [profileType, setProfileType] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+    profileType?: string;
+  }>({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
   const router = useRouter();
 
   const {
@@ -132,15 +277,16 @@ export default function RegisterPage() {
       const result = await res.json();
       
       if (data.profileType === "enseignant") {
-        // Modal de succès pour enseignant
         showSuccessModal(
           "Compte créé avec succès !",
-          "Votre profil est en attente de validation par votre établissement. Vous recevrez une notification une fois validé."
+          "Vous recevrez une notification une fois votre compte validé par votre établissement.",
+          data.profileType
         );
       } else {
         showSuccessModal(
           "Bienvenue !",
-          "Votre compte a été créé avec succès. Redirection vers la page de connexion..."
+          "Votre compte a été créé avec succès. Redirection vers la page de connexion...",
+          data.profileType
         );
       }
       
@@ -149,7 +295,7 @@ export default function RegisterPage() {
         setProfileType(null);
         setAvatarUrl(null);
         router.push("/login");
-      }, 2000);
+      }, 3000);
     } catch (err: any) {
       showErrorModal("Erreur", err.message);
     } finally {
@@ -157,13 +303,27 @@ export default function RegisterPage() {
     }
   };
 
-  const showSuccessModal = (title: string, message: string) => {
-    // Vous pouvez remplacer ceci par votre système de notification
-    alert(`✅ ${title}\n\n${message}`);
+  const showSuccessModal = (title: string, message: string, profile?: string) => {
+    setModalState({
+      isOpen: true,
+      type: "success",
+      title,
+      message,
+      profileType: profile,
+    });
   };
 
   const showErrorModal = (title: string, message: string) => {
-    alert(`❌ ${title}\n\n${message}`);
+    setModalState({
+      isOpen: true,
+      type: "error",
+      title,
+      message,
+    });
+  };
+
+  const closeModal = () => {
+    setModalState({ ...modalState, isOpen: false });
   };
 
   return (
@@ -260,6 +420,16 @@ export default function RegisterPage() {
           <p>En créant un compte, vous acceptez nos conditions d'utilisation</p>
         </div>
       </div>
+
+      {/* Modal */}
+      <SuccessModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        type={modalState.type}
+        title={modalState.title}
+        message={modalState.message}
+        profileType={modalState.profileType}
+      />
     </div>
   );
 }

@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { 
@@ -23,6 +21,7 @@ import {
 } from "lucide-react";
 import DonationDetailModal from "@/components/donations/DonationDetailModal";
 import DonationActivityHistory from "@/components/donations/DonationActivityHistory";
+import ConfirmReceptionModal from "@/components/donations/ConfirmReceptionModal";
 
 export default function EnhancedDonationsReceivedPage() {
   const router = useRouter();
@@ -39,6 +38,15 @@ export default function EnhancedDonationsReceivedPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
+
+  // État pour la modal de confirmation de réception
+  const [confirmReceptionModal, setConfirmReceptionModal] = useState<{
+    isOpen: boolean;
+    donation: any;
+  }>({
+    isOpen: false,
+    donation: null
+  });
 
   const loadDonations = async () => {
     try {
@@ -122,14 +130,25 @@ export default function EnhancedDonationsReceivedPage() {
     };
   }, [donations]);
 
-  const handleStatusUpdate = async (donationId: string, newStatus: string) => {
-    setUpdatingStatus(donationId);
+  // Ouvrir la modal de confirmation
+  const handleConfirmReceptionClick = (donation: any) => {
+    setConfirmReceptionModal({
+      isOpen: true,
+      donation: donation
+    });
+  };
+
+  // Confirmer la réception
+  const confirmReception = async () => {
+    if (!confirmReceptionModal.donation) return;
+
+    setUpdatingStatus(confirmReceptionModal.donation.id);
     
     try {
-      const response = await fetch(`/api/donations/${donationId}/status`, {
+      const response = await fetch(`/api/donations/${confirmReceptionModal.donation.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: 'RECEPTIONNE' })
       });
 
       if (!response.ok) {
@@ -137,6 +156,7 @@ export default function EnhancedDonationsReceivedPage() {
       }
 
       await loadDonations();
+      setConfirmReceptionModal({ isOpen: false, donation: null });
     } catch (error) {
       alert('Erreur: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
     } finally {
@@ -245,7 +265,7 @@ export default function EnhancedDonationsReceivedPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Barre de contrôle - SIMPLE SANS HEADER DUPLIQUÉ */}
+      {/* Barre de contrôle */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -510,11 +530,11 @@ export default function EnhancedDonationsReceivedPage() {
                         <div className="flex items-center gap-2">
                           {donation.statut === 'ENVOYE' && (
                             <button
-                              onClick={() => handleStatusUpdate(donation.id, 'RECEPTIONNE')}
+                              onClick={() => handleConfirmReceptionClick(donation)}
                               disabled={updatingStatus === donation.id}
                               className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
                             >
-                              {updatingStatus === donation.id ? 'Confirmation...' : 'Confirmer réception'}
+                              Confirmer réception
                             </button>
                           )}
                           
@@ -598,13 +618,26 @@ export default function EnhancedDonationsReceivedPage() {
         )}
       </div>
 
+      {/* Modal de confirmation de réception */}
+      <ConfirmReceptionModal
+        isOpen={confirmReceptionModal.isOpen}
+        onClose={() => setConfirmReceptionModal({ isOpen: false, donation: null })}
+        onConfirm={confirmReception}
+        donation={confirmReceptionModal.donation}
+        isLoading={updatingStatus === confirmReceptionModal.donation?.id}
+      />
+
       {/* Modal de détails */}
       <DonationDetailModal
         donation={selectedDonation}
         isOpen={!!selectedDonation}
         onClose={() => setSelectedDonation(null)}
         onStatusUpdate={async (donationId, newStatus) => {
-          await handleStatusUpdate(donationId, newStatus);
+          // Utiliser la modal de confirmation au lieu de la mise à jour directe
+          const donation = donations.find(d => d.id === donationId);
+          if (donation && newStatus === 'RECEPTIONNE') {
+            handleConfirmReceptionClick(donation);
+          }
           setSelectedDonation(null);
         }}
       />

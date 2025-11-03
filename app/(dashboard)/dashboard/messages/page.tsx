@@ -33,10 +33,8 @@ export default async function DashboardMessagesPage() {
   }
 
   return (
-    // ✅ CORRECTION : Utiliser calc() pour soustraire la hauteur du header
-    // Supposons que le header fait environ 72px de hauteur
+  
     <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 72px)' }}>
-      {/* Page de messages sans son propre header */}
       <div className="flex-1 overflow-hidden">
         <MessagesPage 
           currentUserId={auth.id}
