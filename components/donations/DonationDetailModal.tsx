@@ -1,10 +1,9 @@
-"use client";
+// export default DonationDetailModal;
 
 import { useState } from "react";
 import { 
   X, 
   User, 
-  Calendar, 
   Package,
   CheckCircle2,
   Clock,
@@ -14,10 +13,13 @@ import {
   GraduationCap,
   Download,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Quote,
+  Heart
 } from "lucide-react";
 
-const ImprovedDonationDetailModal = ({ 
+const DonationDetailModal = ({ 
   donation, 
   isOpen, 
   onClose, 
@@ -193,6 +195,49 @@ const ImprovedDonationDetailModal = ({
               </button>
             )}
           </div>
+
+          {/* ✅ MESSAGE DU DONATEUR - DESIGN AMÉLIORÉ */}
+          {donation.raison && (
+            <div className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 rounded-2xl p-6 border-2 border-purple-300 shadow-lg">
+              {/* Effet de fond décoratif */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-pink-200/30 to-purple-200/30 rounded-full blur-2xl"></div>
+              
+              <div className="relative">
+                {/* En-tête avec icône */}
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg transform rotate-3">
+                    <Heart className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-700 to-pink-600 mb-1 flex items-center gap-2">
+                      Message du donateur
+                      <MessageSquare className="w-5 h-5 text-purple-600" />
+                    </h3>
+                    <p className="text-sm text-purple-600 font-medium">Un message personnel accompagne ce don</p>
+                  </div>
+                </div>
+
+                {/* Message avec citation stylisée */}
+                <div className="relative bg-white/80 backdrop-blur-sm rounded-xl p-5 border-2 border-purple-200 shadow-md">
+                  <Quote className="absolute top-3 left-3 w-8 h-8 text-purple-300/50" />
+                  <Quote className="absolute bottom-3 right-3 w-8 h-8 text-pink-300/50 transform rotate-180" />
+                  
+                  <p className="text-base text-slate-800 leading-relaxed px-6 py-2 italic font-medium">
+                    "{donation.raison}"
+                  </p>
+                </div>
+
+                {/* Badge décoratif */}
+                <div className="flex justify-end mt-3">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 border border-purple-300 rounded-full text-xs font-semibold text-purple-700">
+                    <Heart className="w-3 h-3 fill-current" />
+                    Don avec cœur
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Informations du don */}
@@ -430,4 +475,4 @@ const ImprovedDonationDetailModal = ({
   );
 };
 
-export default ImprovedDonationDetailModal;
+export default DonationDetailModal;

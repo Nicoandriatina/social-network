@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Filter, 
@@ -17,11 +17,16 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
-  Activity
+  Activity,
+  ChevronDown,
+  X,
+  MessageSquare,
+  Quote
 } from "lucide-react";
 import DonationDetailModal from "@/components/donations/DonationDetailModal";
 import DonationActivityHistory from "@/components/donations/DonationActivityHistory";
 import ConfirmReceptionModal from "@/components/donations/ConfirmReceptionModal";
+import { AvatarDisplay } from "@/components/AvatarDisplay";
 
 export default function EnhancedDonationsReceivedPage() {
   const router = useRouter();
@@ -38,6 +43,8 @@ export default function EnhancedDonationsReceivedPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
 
   // État pour la modal de confirmation de réception
   const [confirmReceptionModal, setConfirmReceptionModal] = useState<{
@@ -47,6 +54,20 @@ export default function EnhancedDonationsReceivedPage() {
     isOpen: false,
     donation: null
   });
+
+  // Fermer le dropdown quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+
+    if (showFilters) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showFilters]);
 
   const loadDonations = async () => {
     try {
@@ -78,7 +99,8 @@ export default function EnhancedDonationsReceivedPage() {
     if (searchTerm) {
       filtered = filtered.filter(don =>
         don.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        don.donateur.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+        don.donateur.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (don.raison && don.raison.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -126,7 +148,8 @@ export default function EnhancedDonationsReceivedPage() {
       enAttente: donations.filter(d => d.statut === 'EN_ATTENTE').length,
       envoyes: donations.filter(d => d.statut === 'ENVOYE').length,
       recus: donations.filter(d => d.statut === 'RECEPTIONNE').length,
-      donatersUniques: new Set(donations.map(d => d.donateur.id)).size
+      donatersUniques: new Set(donations.map(d => d.donateur.id)).size,
+      avecMessage: donations.filter(d => d.raison && d.raison.trim() !== '').length
     };
   }, [donations]);
 
@@ -163,6 +186,15 @@ export default function EnhancedDonationsReceivedPage() {
       setUpdatingStatus(null);
     }
   };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatutFilter('all');
+    setTypeFilter('all');
+    setDateFilter('all');
+  };
+
+  const hasActiveFilters = searchTerm || statutFilter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all';
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-MG').format(amount);
@@ -266,7 +298,7 @@ export default function EnhancedDonationsReceivedPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Barre de contrôle */}
-      <div className="bg-white border-b border-slate-200">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Toggle Vue */}
@@ -298,17 +330,113 @@ export default function EnhancedDonationsReceivedPage() {
             {/* Boutons d'action */}
             {activeView === 'donations' && (
               <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
-                    showFilters 
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
-                      : 'border-slate-300 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  <Filter className="w-4 h-4" />
-                  Filtres
-                </button>
+                {/* Dropdown Filtres */}
+                <div className="relative" ref={filterDropdownRef}>
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                      showFilters || hasActiveFilters
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                        : 'border-slate-300 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <Filter className="w-4 h-4" />
+                    Filtres
+                    {hasActiveFilters && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded-full">
+                        {[searchTerm, statutFilter !== 'all', typeFilter !== 'all', dateFilter !== 'all'].filter(Boolean).length}
+                      </span>
+                    )}
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showFilters && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 p-4 z-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-slate-800">Filtres</h3>
+                        {hasActiveFilters && (
+                          <button
+                            onClick={resetFilters}
+                            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                          >
+                            Réinitialiser
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {/* Recherche */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Rechercher
+                          </label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                              type="text"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              placeholder="Nom, libellé, message..."
+                              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Statut */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Statut
+                          </label>
+                          <select
+                            value={statutFilter}
+                            onChange={(e) => setStatutFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                          >
+                            <option value="all">Tous les statuts</option>
+                            <option value="EN_ATTENTE">En attente</option>
+                            <option value="ENVOYE">Envoyés</option>
+                            <option value="RECEPTIONNE">Reçus</option>
+                          </select>
+                        </div>
+
+                        {/* Type */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Type de don
+                          </label>
+                          <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                          >
+                            <option value="all">Tous les types</option>
+                            <option value="MONETAIRE">Monétaires</option>
+                            <option value="VIVRES">Vivres</option>
+                            <option value="NON_VIVRES">Matériels</option>
+                          </select>
+                        </div>
+
+                        {/* Période */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Période
+                          </label>
+                          <select
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                          >
+                            <option value="all">Toutes les périodes</option>
+                            <option value="today">Aujourd'hui</option>
+                            <option value="week">Cette semaine</option>
+                            <option value="month">Ce mois</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 bg-white rounded-lg hover:bg-slate-50 text-sm font-medium">
                   <Download className="w-4 h-4" />
@@ -324,7 +452,7 @@ export default function EnhancedDonationsReceivedPage() {
       <div className="max-w-7xl mx-auto px-6 py-6">
         {activeView === 'donations' ? (
           <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-            {/* Sidebar avec statistiques et filtres */}
+            {/* Sidebar avec statistiques */}
             <div className="space-y-6">
               {/* Statistiques rapides */}
               <div className="bg-white rounded-2xl border border-slate-200 p-6">
@@ -351,6 +479,14 @@ export default function EnhancedDonationsReceivedPage() {
                     <span className="font-semibold">{stats.donatersUniques}</span>
                   </div>
                   
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600 flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4" />
+                      Avec message:
+                    </span>
+                    <span className="font-semibold text-purple-600">{stats.avecMessage}</span>
+                  </div>
+                  
                   <hr className="my-3" />
                   
                   <div className="space-y-2">
@@ -369,93 +505,6 @@ export default function EnhancedDonationsReceivedPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Filtres */}
-              <div className={`bg-white rounded-2xl border border-slate-200 p-6 transition-all ${
-                showFilters ? 'block' : 'hidden lg:block'
-              }`}>
-                <h3 className="font-semibold text-slate-800 mb-4">Filtres</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Rechercher
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Nom du donateur, libellé..."
-                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Statut
-                    </label>
-                    <select
-                      value={statutFilter}
-                      onChange={(e) => setStatutFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="all">Tous les statuts</option>
-                      <option value="EN_ATTENTE">En attente</option>
-                      <option value="ENVOYE">Envoyés</option>
-                      <option value="RECEPTIONNE">Reçus</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Type de don
-                    </label>
-                    <select
-                      value={typeFilter}
-                      onChange={(e) => setTypeFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="all">Tous les types</option>
-                      <option value="MONETAIRE">Monétaires</option>
-                      <option value="VIVRES">Vivres</option>
-                      <option value="NON_VIVRES">Matériels</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Période
-                    </label>
-                    <select
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="all">Toutes les périodes</option>
-                      <option value="today">Aujourd'hui</option>
-                      <option value="week">Cette semaine</option>
-                      <option value="month">Ce mois</option>
-                    </select>
-                  </div>
-
-                  {(searchTerm || statutFilter !== 'all' || typeFilter !== 'all' || dateFilter !== 'all') && (
-                    <button
-                      onClick={() => {
-                        setSearchTerm('');
-                        setStatutFilter('all');
-                        setTypeFilter('all');
-                        setDateFilter('all');
-                      }}
-                      className="w-full px-3 py-2 text-sm text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50"
-                    >
-                      Réinitialiser les filtres
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
 
             {/* Liste des donations */}
@@ -467,7 +516,7 @@ export default function EnhancedDonationsReceivedPage() {
                     Aucune donation trouvée
                   </h3>
                   <p className="text-slate-500">
-                    Les donations apparaîtront ici quand vous en recevrez
+                    {hasActiveFilters ? 'Essayez de modifier vos filtres' : 'Les donations apparaîtront ici quand vous en recevrez'}
                   </p>
                 </div>
               ) : (
@@ -482,20 +531,30 @@ export default function EnhancedDonationsReceivedPage() {
                     <div key={donation.id} className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg transition-shadow">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-start gap-4 flex-1">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold">
-                            {donation.donateur.fullName.slice(0, 2).toUpperCase()}
-                          </div>
+                          {/* Avatar du donateur */}
+                          <AvatarDisplay
+                            name={donation.donateur.fullName}
+                            avatar={donation.donateur.avatar}
+                            size="md"
+                            showBorder={false}
+                          />
                           
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="font-semibold text-slate-800">{donation.libelle}</h3>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusInfo.color}`}>
                                 <StatusIcon className="w-3 h-3 inline mr-1" />
                                 {statusInfo.label}
                               </span>
+                              {donation.raison && (
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" />
+                                  Message
+                                </span>
+                              )}
                             </div>
                             
-                            <div className="flex items-center gap-4 text-sm text-slate-600 mb-2">
+                            <div className="flex items-center gap-4 text-sm text-slate-600 mb-2 flex-wrap">
                               <span className="flex items-center gap-1">
                                 <User className="w-4 h-4" />
                                 {donation.donateur.fullName}
@@ -517,7 +576,7 @@ export default function EnhancedDonationsReceivedPage() {
                               </span>
                             </div>
                             
-                            <div className="flex items-center gap-1 text-sm text-slate-500">
+                            <div className="flex items-center gap-1 text-sm text-slate-500 flex-wrap">
                               <DestinationIcon className="w-4 h-4" />
                               <span>{destinationInfo.type}: {destinationInfo.name}</span>
                               {destinationInfo.subtitle && (
@@ -532,7 +591,7 @@ export default function EnhancedDonationsReceivedPage() {
                             <button
                               onClick={() => handleConfirmReceptionClick(donation)}
                               disabled={updatingStatus === donation.id}
-                              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm"
+                              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
                             >
                               Confirmer réception
                             </button>
@@ -548,8 +607,27 @@ export default function EnhancedDonationsReceivedPage() {
                         </div>
                       </div>
 
+                      {/* Message du donateur */}
+                      {donation.raison && (
+                        <div className="mb-4 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 rounded-xl p-4 border-2 border-purple-200 shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                              <Quote className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-sm font-semibold text-purple-900 mb-2">
+                                Message du donateur
+                              </h4>
+                              <p className="text-sm text-purple-800 leading-relaxed italic font-medium">
+                                "{donation.raison}"
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Timeline */}
-                      <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="bg-slate-50 rounded-lg p-4 mb-4">
                         <h4 className="text-sm font-medium text-slate-700 mb-3">Suivi du don</h4>
                         <div className="space-y-2">
                           <div className="flex items-center gap-3 text-sm">
@@ -583,19 +661,22 @@ export default function EnhancedDonationsReceivedPage() {
                       {donation.photos && donation.photos.length > 0 && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium text-slate-700 mb-2">Photos</h4>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             {donation.photos.slice(0, 3).map((photo, index) => (
                               <img
                                 key={index}
                                 src={photo}
                                 alt="Photo du don"
-                                className="w-16 h-16 object-cover rounded-lg border cursor-pointer hover:opacity-80"
+                                className="w-16 h-16 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setSelectedDonation(donation)}
                               />
                             ))}
                             {donation.photos.length > 3 && (
-                              <div className="w-16 h-16 bg-slate-200 rounded-lg border flex items-center justify-center cursor-pointer">
-                                <span className="text-xs text-slate-600">+{donation.photos.length - 3}</span>
+                              <div 
+                                className="w-16 h-16 bg-slate-200 rounded-lg border flex items-center justify-center cursor-pointer hover:bg-slate-300 transition-colors"
+                                onClick={() => setSelectedDonation(donation)}
+                              >
+                                <span className="text-xs text-slate-600 font-semibold">+{donation.photos.length - 3}</span>
                               </div>
                             )}
                           </div>
@@ -633,7 +714,6 @@ export default function EnhancedDonationsReceivedPage() {
         isOpen={!!selectedDonation}
         onClose={() => setSelectedDonation(null)}
         onStatusUpdate={async (donationId, newStatus) => {
-          // Utiliser la modal de confirmation au lieu de la mise à jour directe
           const donation = donations.find(d => d.id === donationId);
           if (donation && newStatus === 'RECEPTIONNE') {
             handleConfirmReceptionClick(donation);

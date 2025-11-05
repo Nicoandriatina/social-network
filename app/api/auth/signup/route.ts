@@ -1,3 +1,182 @@
+// // app/api/auth/signup/route.ts
+// import { PrismaClient } from '@prisma/client';
+// import { hash } from 'bcryptjs';
+// import { NextResponse } from 'next/server';
+
+// const prisma = new PrismaClient();
+
+// export async function POST(req: Request) {
+//   try {
+//     const body = await req.json();
+//     const {
+//       email,
+//       password,
+//       fullName,
+//       telephone,
+//       type,
+//       country,
+//       avatar,
+//       etablissementId, // ✅ ID de l'établissement pour les enseignants
+//       adressePostale,
+//       secteur,
+//       profession,
+//       facebook,
+//       twitter,
+//       whatsapp,
+//       etablissement,
+//       enseignant,
+//       donateur
+//     } = body;
+
+//     console.log('📋 Inscription avec type:', type);
+//     console.log('📋 Etablissement ID:', etablissementId);
+
+//     // 1. Vérifier email/téléphone existant
+//     const existing = await prisma.user.findFirst({
+//       where: {
+//         OR: [
+//           { email },
+//           { telephone: telephone ?? undefined }
+//         ]
+//       }
+//     });
+
+//     if (existing) {
+//       return NextResponse.json({ error: 'Email ou téléphone déjà utilisé.' }, { status: 409 });
+//     }
+
+//     // 2. Hash password
+//     const hashedPassword = await hash(password, 10);
+
+//     // 3. Déterminer le rôle selon le type
+//     let userRole: 'SIMPLE' | 'ADMIN' | 'SUPERADMIN' = 'SIMPLE';
+//     if (type === 'ETABLISSEMENT') {
+//       userRole = 'ADMIN';
+//     }
+
+//     console.log('✅ Création utilisateur avec rôle:', userRole);
+
+//     // 4. Préparer les données de création
+//     const userData: any = {
+//       email,
+//       password: hashedPassword,
+//       fullName,
+//       telephone,
+//       type,
+//       country,
+//       avatar: avatar || null,
+//       adressePostale,
+//       secteur,
+//       profession,
+//       facebook,
+//       twitter,
+//       whatsapp,
+//       role: userRole,
+//       isValidated: type === 'ETABLISSEMENT', // ✅ Auto-validé si établissement
+//       emailVerified: false,
+//     };
+
+//     // 5. ✅ ÉTABLISSEMENT - Créer l'établissement et lier l'utilisateur
+//     if (type === 'ETABLISSEMENT' && etablissement) {
+//       userData.etablissement = {
+//         create: {
+//           nom: etablissement.nom,
+//           type: etablissement.type,
+//           niveau: etablissement.niveau,
+//           adresse: etablissement.adresse || '',
+//           anneeCreation: etablissement.anneeCreation,
+//           nbEleves: etablissement.nbEleves,
+//         }
+//       };
+//     }
+
+//     // 6. ✅ ENSEIGNANT - Lier à l'établissement si sélectionné
+//     if (type === 'ENSEIGNANT') {
+//       if (etablissementId) {
+//         // Vérifier que l'établissement existe
+//         const etabExists = await prisma.etablissement.findUnique({
+//           where: { id: etablissementId }
+//         });
+
+//         if (!etabExists) {
+//           return NextResponse.json({ error: 'Établissement non trouvé' }, { status: 404 });
+//         }
+
+//         // ✅ Lier l'utilisateur à l'établissement
+//         userData.etablissementId = etablissementId;
+        
+//         console.log('✅ Enseignant lié à l\'établissement:', etablissementId);
+//       }
+
+//       // Créer le profil enseignant
+//       userData.enseignant = {
+//         create: {
+//           position: enseignant?.position || '',
+//           experience: enseignant?.experience || '',
+//           degree: enseignant?.degree || '',
+//           validated: false, // ✅ Doit être validé par l'établissement
+//         }
+//       };
+//     }
+
+//     // 7. ✅ DONATEUR
+//     if (type === 'DONATEUR' && donateur) {
+//       userData.donateur = {
+//         create: {
+//           donorType: donateur.donorType,
+//           sector: donateur.sector
+//         }
+//       };
+//     }
+
+//     // 8. Créer l'utilisateur
+//     const newUser = await prisma.user.create({
+//       data: userData,
+//       include: {
+//         etablissement: true,
+//         enseignant: true,
+//         donateur: true,
+//       }
+//     });
+
+//     console.log('✅ Utilisateur créé:', {
+//       id: newUser.id,
+//       email: newUser.email,
+//       type: newUser.type,
+//       role: newUser.role,
+//       etablissementId: newUser.etablissementId,
+//       avatar: newUser.avatar
+//     });
+
+//     // 9. Si c'est un établissement, mettre à jour la relation admin
+//     if (type === 'ETABLISSEMENT' && newUser.etablissementId) {
+//       await prisma.etablissement.update({
+//         where: { id: newUser.etablissementId },
+//         data: {
+//           admin: {
+//             connect: { id: newUser.id }
+//           }
+//         }
+//       });
+      
+//       console.log('✅ Établissement lié à l\'admin:', newUser.id);
+//     }
+
+//     return NextResponse.json({ 
+//       message: 'Utilisateur créé avec succès.', 
+//       userId: newUser.id,
+//       hasAvatar: !!newUser.avatar,
+//       needsValidation: type === 'ENSEIGNANT' && !!etablissementId
+//     }, { status: 201 });
+    
+//   } catch (error) {
+//     console.error('❌ Signup error:', error);
+//     return NextResponse.json({ 
+//       error: 'Erreur serveur.',
+//       details: error instanceof Error ? error.message : 'Unknown error'
+//     }, { status: 500 });
+//   }
+// }
 
 // app/api/auth/signup/route.ts
 import { PrismaClient } from '@prisma/client';
@@ -16,7 +195,7 @@ export async function POST(req: Request) {
       telephone,
       type,
       country,
-      avatar, // ✅ URL de l'avatar depuis l'upload
+      avatar,
       etablissementId,
       adressePostale,
       secteur,
@@ -26,8 +205,16 @@ export async function POST(req: Request) {
       whatsapp,
       etablissement,
       enseignant,
-      donateur
+      donateur,
+      scolarityHistory, // ✅ Nouveau champ pour l'historique
     } = body;
+
+    console.log('📋 Création utilisateur avec:', {
+      email,
+      type,
+      etablissementId,
+      scolarityHistory,
+    });
 
     // 1. Vérifier email/téléphone existant
     const existing = await prisma.user.findFirst({
@@ -47,94 +234,163 @@ export async function POST(req: Request) {
     const hashedPassword = await hash(password, 10);
 
     // 3. Déterminer le rôle selon le type
-    let userRole = 'SIMPLE';
+    let userRole: 'SIMPLE' | 'ADMIN' | 'SUPERADMIN' = 'SIMPLE';
     if (type === 'ETABLISSEMENT') {
       userRole = 'ADMIN';
     }
 
-    console.log('📋 Création utilisateur avec:', {
-      email,
-      type,
-      hasAvatar: !!avatar,
-      avatarUrl: avatar
-    });
+    console.log('✅ Rôle déterminé:', userRole);
 
-    // 4. Créer l'utilisateur
+    // 4. Préparer les données de création
+    const userData: any = {
+      email,
+      password: hashedPassword,
+      fullName,
+      telephone,
+      type,
+      country,
+      avatar: avatar || null,
+      adressePostale,
+      secteur,
+      profession,
+      facebook,
+      twitter,
+      whatsapp,
+      role: userRole,
+      isValidated: type === 'ETABLISSEMENT',
+      emailVerified: false,
+    };
+
+    // 5. ✅ ÉTABLISSEMENT
+    if (type === 'ETABLISSEMENT' && etablissement) {
+      userData.etablissement = {
+        create: {
+          nom: etablissement.nom,
+          type: etablissement.type,
+          niveau: etablissement.niveau,
+          adresse: etablissement.adresse || '',
+          anneeCreation: etablissement.anneeCreation,
+          nbEleves: etablissement.nbEleves,
+        }
+      };
+    }
+
+    // 6. ✅ ENSEIGNANT
+    if (type === 'ENSEIGNANT') {
+      if (etablissementId) {
+        // Vérifier que l'établissement existe
+        const etabExists = await prisma.etablissement.findUnique({
+          where: { id: etablissementId }
+        });
+
+        if (!etabExists) {
+          return NextResponse.json({ error: 'Établissement non trouvé' }, { status: 404 });
+        }
+
+        userData.etablissementId = etablissementId;
+        console.log('✅ Enseignant lié à l\'établissement:', etablissementId);
+      }
+
+      // Créer le profil enseignant
+      userData.enseignant = {
+        create: {
+          position: enseignant?.position || '',
+          experience: enseignant?.experience || '',
+          degree: enseignant?.degree || '',
+          validated: false,
+        }
+      };
+
+      // ✅ Créer l'historique de scolarité si un établissement est sélectionné
+      if (etablissementId && scolarityHistory) {
+        const years: number[] = [];
+        const startYear = scolarityHistory.startYear;
+        const endYear = scolarityHistory.endYear || new Date().getFullYear();
+        
+        // Générer la liste des années
+        for (let year = startYear; year <= endYear; year++) {
+          years.push(year);
+        }
+
+        userData.scolariteAnnee = years;
+        
+        console.log('✅ Années de scolarité créées:', years);
+      }
+    }
+
+    // 7. ✅ DONATEUR
+    if (type === 'DONATEUR' && donateur) {
+      userData.donateur = {
+        create: {
+          donorType: donateur.donorType,
+          sector: donateur.sector
+        }
+      };
+    }
+
+    // 8. Créer l'utilisateur
     const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        fullName,
-        telephone,
-        type,
-        country,
-        avatar: avatar || null, // ✅ Stocker l'URL de l'avatar
-        adressePostale,
-        secteur,
-        profession,
-        facebook,
-        twitter,
-        whatsapp,
-        role: userRole,
-        isValidated: false,
-        emailVerified: false,
-        // ✅ ÉTABLISSEMENT
-        etablissement: etablissement ? {
-          create: {
-            nom: etablissement.nom,
-            type: etablissement.type,
-            niveau: etablissement.niveau,
-            adresse: etablissement.adresse,
-            anneeCreation: etablissement.anneeCreation,
-            nbEleves: etablissement.nbEleves,
-          }
-        } : undefined,
-        // ✅ ENSEIGNANT
-        enseignant: enseignant ? {
-          create: {
-            position: enseignant.position,
-            experience: enseignant.experience,
-            degree: enseignant.degree,
-            validated: false,
-          }
-        } : undefined,
-        // ✅ DONATEUR
-        donateur: donateur ? {
-          create: {
-            donorType: donateur.donorType,
-            sector: donateur.sector
-          }
-        } : undefined,
+      data: userData,
+      include: {
+        etablissement: true,
+        enseignant: true,
+        donateur: true,
       }
     });
-
-    // 5. Si établissement créé, lier l'utilisateur comme admin
-    if (type === 'ETABLISSEMENT' && newUser.etablissement) {
-      await prisma.etablissement.update({
-        where: { id: newUser.etablissement.id },
-        data: {
-          admin: {
-            connect: [{ id: newUser.id }]
-          }
-        }
-      });
-    }
 
     console.log('✅ Utilisateur créé:', {
       id: newUser.id,
       email: newUser.email,
       type: newUser.type,
-      avatar: newUser.avatar
+      role: newUser.role,
+      etablissementId: newUser.etablissementId,
+      scolariteAnnee: newUser.scolariteAnnee,
     });
+
+    // 9. Si établissement créé, mettre à jour la relation admin
+    if (type === 'ETABLISSEMENT' && newUser.etablissementId) {
+      await prisma.etablissement.update({
+        where: { id: newUser.etablissementId },
+        data: {
+          admin: {
+            connect: { id: newUser.id }
+          }
+        }
+      });
+      
+      console.log('✅ Établissement lié à l\'admin');
+    }
+
+    // 10. ✅ Créer l'entrée ScolarityHistory si applicable
+    if (type === 'ENSEIGNANT' && etablissementId && scolarityHistory) {
+      try {
+        await prisma.scolarityHistory.create({
+          data: {
+            userId: newUser.id,
+            etablissementId: etablissementId,
+            years: newUser.scolariteAnnee,
+          }
+        });
+        console.log('✅ ScolarityHistory créé');
+      } catch (historyError) {
+        console.error('⚠️ Erreur création ScolarityHistory:', historyError);
+        // Non bloquant, on continue
+      }
+    }
 
     return NextResponse.json({ 
       message: 'Utilisateur créé avec succès.', 
       userId: newUser.id,
-      hasAvatar: !!newUser.avatar
+      hasAvatar: !!newUser.avatar,
+      needsValidation: type === 'ENSEIGNANT' && !!etablissementId,
+      scolarityYears: newUser.scolariteAnnee?.length || 0,
     }, { status: 201 });
     
   } catch (error) {
-    console.error('Signup error:', error);
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    console.error('❌ Signup error:', error);
+    return NextResponse.json({ 
+      error: 'Erreur serveur.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

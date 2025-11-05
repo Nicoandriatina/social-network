@@ -24,11 +24,11 @@ import {
   ExternalLink,
   CheckCircle,
   AlertCircle,
-  FolderOpen,
   Target,
   BarChart3,
   Eye,
-  Edit3
+  Edit3,
+  Sparkles
 } from "lucide-react";
 import { useTeacherProfile } from "@/lib/hooks/useTeacherProfile";
 import { AvatarDisplay } from "@/components/AvatarDisplay";
@@ -52,6 +52,164 @@ type EnseignantDashboardProps = {
   };
 };
 
+// ============================================
+// MODALS COMPONENTS
+// ============================================
+
+interface ConfirmModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+  title: string;
+  message: string;
+  type: "delete" | "add" | "info";
+  icon?: React.ReactNode;
+}
+
+const ConfirmModal = ({ isOpen, onClose, onConfirm, isLoading, title, message, type, icon }: ConfirmModalProps) => {
+  if (!isOpen) return null;
+
+  const getColors = () => {
+    switch (type) {
+      case "delete":
+        return {
+          gradient: "from-red-500 to-orange-500",
+          bg: "bg-red-100",
+          text: "text-red-500",
+          button: "from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
+        };
+      case "add":
+        return {
+          gradient: "from-green-500 to-emerald-500",
+          bg: "bg-green-100",
+          text: "text-green-500",
+          button: "from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+        };
+      default:
+        return {
+          gradient: "from-blue-500 to-indigo-500",
+          bg: "bg-blue-100",
+          text: "text-blue-500",
+          button: "from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+        };
+    }
+  };
+
+  const colors = getColors();
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-300">
+        <button
+          onClick={onClose}
+          disabled={isLoading}
+          className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+        >
+          <X className="w-4 h-4 text-gray-500" />
+        </button>
+
+        <div className="text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="relative">
+              <div className={`absolute inset-0 bg-gradient-to-r ${colors.gradient} rounded-full blur-lg opacity-50 animate-pulse`} />
+              <div className={`relative ${colors.bg} rounded-full p-3 shadow-lg`}>
+                {icon || <AlertCircle className={`w-10 h-10 ${colors.text}`} />}
+              </div>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-bold mb-2 text-gray-900">{title}</h2>
+          <p className="text-gray-600 text-sm mb-6">{message}</p>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isLoading}
+              className={`flex-1 px-4 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r ${colors.button} shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm`}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>En cours...</span>
+                </>
+              ) : (
+                <span>Confirmer</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface NotificationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: "success" | "error";
+  title: string;
+  message: string;
+}
+
+const NotificationModal = ({ isOpen, onClose, type, title, message }: NotificationModalProps) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-in zoom-in-95 duration-300">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X className="w-4 h-4 text-gray-500" />
+        </button>
+
+        <div className="text-center">
+          <div className="mb-4 flex justify-center">
+            <div className={`p-3 rounded-full ${
+              type === "error" ? "bg-red-100" : "bg-green-100"
+            }`}>
+              {type === "error" ? (
+                <AlertCircle className="w-10 h-10 text-red-500" />
+              ) : (
+                <CheckCircle className="w-10 h-10 text-green-500" />
+              )}
+            </div>
+          </div>
+
+          <h3 className="text-lg font-bold mb-2 text-gray-900">{title}</h3>
+          <p className="text-gray-600 text-sm">{message}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
 export default function EnseignantDashboard({ user }: EnseignantDashboardProps) {
   const {
     experiences,
@@ -74,10 +232,28 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
   const [cvAnalysis, setCvAnalysis] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   
-  // Formulaires d'ajout manuel
+  // Formulaires
   const [showNewExpForm, setShowNewExpForm] = useState(false);
   const [showNewFormForm, setShowNewFormForm] = useState(false);
   const [showNewCertForm, setShowNewCertForm] = useState(false);
+
+  // États des modals
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: "delete" as "delete" | "add" | "info",
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    isLoading: false,
+    icon: null as React.ReactNode
+  });
+
+  const [notificationModal, setNotificationModal] = useState({
+    isOpen: false,
+    type: "success" as "success" | "error",
+    title: "",
+    message: ""
+  });
 
   const [newExp, setNewExp] = useState({
     poste: "",
@@ -108,95 +284,223 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
     donsRecus: 4,
   };
 
-  // === GESTION DES EXPÉRIENCES ===
+  // Vérifier si le profil est vide
+  const isProfileEmpty = experiences.length === 0 && formations.length === 0 && certifications.length === 0;
+
+  // ============================================
+  // HANDLERS
+  // ============================================
+
   const handleAddExperience = async () => {
     if (!newExp.poste || !newExp.etablissement || !newExp.debut) {
-      alert("Veuillez remplir tous les champs obligatoires");
+      setNotificationModal({
+        isOpen: true,
+        type: "error",
+        title: "Champs requis",
+        message: "Veuillez remplir tous les champs obligatoires"
+      });
       return;
     }
 
-    try {
-      await addExperience({
-        poste: newExp.poste,
-        etablissement: newExp.etablissement,
-        debut: newExp.debut,
-        fin: newExp.enCours ? undefined : newExp.fin,
-        enCours: newExp.enCours,
-        description: newExp.description
-      });
-      
-      setNewExp({ poste: "", etablissement: "", debut: "", fin: "", enCours: false, description: "" });
-      setShowNewExpForm(false);
-      alert("✅ Expérience ajoutée !");
-    } catch (error) {
-      alert("❌ Erreur lors de l'ajout");
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "add",
+      title: "Ajouter l'expérience",
+      message: `Voulez-vous ajouter "${newExp.poste}" à votre parcours ?`,
+      icon: <Briefcase className="w-10 h-10 text-green-500" />,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          await addExperience({
+            poste: newExp.poste,
+            etablissement: newExp.etablissement,
+            debut: newExp.debut,
+            fin: newExp.enCours ? undefined : newExp.fin,
+            enCours: newExp.enCours,
+            description: newExp.description
+          });
+          
+          setNewExp({ poste: "", etablissement: "", debut: "", fin: "", enCours: false, description: "" });
+          setShowNewExpForm(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "success",
+            title: "Expérience ajoutée !",
+            message: "Votre parcours a été mis à jour avec succès"
+          });
+        } catch (error) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "error",
+            title: "Erreur",
+            message: "Impossible d'ajouter l'expérience"
+          });
+        }
+      },
+      isLoading: false
+    });
   };
 
-  // === GESTION DES FORMATIONS ===
   const handleAddFormation = async () => {
     if (!newForm.diplome || !newForm.etablissement || !newForm.annee) {
-      alert("Veuillez remplir tous les champs obligatoires");
+      setNotificationModal({
+        isOpen: true,
+        type: "error",
+        title: "Champs requis",
+        message: "Veuillez remplir tous les champs obligatoires"
+      });
       return;
     }
 
-    try {
-      await addFormation({
-        diplome: newForm.diplome,
-        etablissement: newForm.etablissement,
-        annee: newForm.annee,
-        description: newForm.description || undefined
-      });
-      
-      setNewForm({ diplome: "", etablissement: "", annee: "", description: "" });
-      setShowNewFormForm(false);
-      alert("✅ Formation ajoutée !");
-    } catch (error) {
-      alert("❌ Erreur lors de l'ajout");
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "add",
+      title: "Ajouter la formation",
+      message: `Voulez-vous ajouter "${newForm.diplome}" à votre parcours ?`,
+      icon: <GraduationCap className="w-10 h-10 text-green-500" />,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          await addFormation({
+            diplome: newForm.diplome,
+            etablissement: newForm.etablissement,
+            annee: newForm.annee,
+            description: newForm.description || undefined
+          });
+          
+          setNewForm({ diplome: "", etablissement: "", annee: "", description: "" });
+          setShowNewFormForm(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "success",
+            title: "Formation ajoutée !",
+            message: "Votre parcours académique a été mis à jour"
+          });
+        } catch (error) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "error",
+            title: "Erreur",
+            message: "Impossible d'ajouter la formation"
+          });
+        }
+      },
+      isLoading: false
+    });
   };
 
-  // === GESTION DES CERTIFICATIONS ===
   const handleAddCertification = async () => {
     if (!newCert.titre || !newCert.organisme || !newCert.date) {
-      alert("Veuillez remplir tous les champs obligatoires");
+      setNotificationModal({
+        isOpen: true,
+        type: "error",
+        title: "Champs requis",
+        message: "Veuillez remplir tous les champs obligatoires"
+      });
       return;
     }
 
-    try {
-      await addCertification({
-        titre: newCert.titre,
-        organisme: newCert.organisme,
-        date: newCert.date,
-        lien: newCert.lien || undefined
-      });
-      
-      setNewCert({ titre: "", organisme: "", date: "", lien: "" });
-      setShowNewCertForm(false);
-      alert("✅ Certification ajoutée !");
-    } catch (error) {
-      alert("❌ Erreur lors de l'ajout");
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: "add",
+      title: "Ajouter la certification",
+      message: `Voulez-vous ajouter "${newCert.titre}" à votre parcours ?`,
+      icon: <Award className="w-10 h-10 text-green-500" />,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          await addCertification({
+            titre: newCert.titre,
+            organisme: newCert.organisme,
+            date: newCert.date,
+            lien: newCert.lien || undefined
+          });
+          
+          setNewCert({ titre: "", organisme: "", date: "", lien: "" });
+          setShowNewCertForm(false);
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "success",
+            title: "Certification ajoutée !",
+            message: "Votre expertise a été reconnue"
+          });
+        } catch (error) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "error",
+            title: "Erreur",
+            message: "Impossible d'ajouter la certification"
+          });
+        }
+      },
+      isLoading: false
+    });
   };
 
-  // === GESTION CV ===
+  const handleDeleteItem = (type: string, id: string, name: string) => {
+    const icons = {
+      experience: <Briefcase className="w-10 h-10 text-red-500" />,
+      formation: <GraduationCap className="w-10 h-10 text-red-500" />,
+      certification: <Award className="w-10 h-10 text-red-500" />
+    };
+
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      title: `Supprimer ${type}`,
+      message: `Êtes-vous sûr de vouloir supprimer "${name}" ? Cette action est irréversible.`,
+      icon: icons[type as keyof typeof icons],
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          if (type === "experience") await deleteExperience(id);
+          else if (type === "formation") await deleteFormation(id);
+          else if (type === "certification") await deleteCertification(id);
+          
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "success",
+            title: "Supprimé avec succès",
+            message: `${type.charAt(0).toUpperCase() + type.slice(1)} supprimé(e) de votre parcours`
+          });
+        } catch (error) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setNotificationModal({
+            isOpen: true,
+            type: "error",
+            title: "Erreur",
+            message: "Impossible de supprimer cet élément"
+          });
+        }
+      },
+      isLoading: false
+    });
+  };
+
   const handleCVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log("📄 Fichier sélectionné:", file.name, file.type, file.size);
-
     setUploading(true);
     try {
-      console.log("🚀 Début uploadCV..."); 
       const result = await uploadCV(file);
-      console.log("✅ Résultat uploadCV:", result);
       setCvAnalysis(result.data);
       setShowUploadCV(false);
       setShowPreview(true);
     } catch (error: any) {
-      console.error("❌ Erreur:", error);
-      alert(error.message || "❌ Erreur lors de l'analyse du CV");
+      setNotificationModal({
+        isOpen: true,
+        type: "error",
+        title: "Erreur d'analyse",
+        message: error.message || "Impossible d'analyser le CV"
+      });
     } finally {
       setUploading(false);
     }
@@ -215,9 +519,19 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
       
       setShowPreview(false);
       setCvAnalysis(null);
-      alert("✅ Profil mis à jour avec succès !");
+      setNotificationModal({
+        isOpen: true,
+        type: "success",
+        title: "Profil mis à jour !",
+        message: "Votre parcours a été importé avec succès"
+      });
     } catch (error) {
-      alert("❌ Erreur lors de la sauvegarde");
+      setNotificationModal({
+        isOpen: true,
+        type: "error",
+        title: "Erreur",
+        message: "Impossible de sauvegarder les données"
+      });
     }
   };
 
@@ -227,9 +541,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
         
         {/* LEFT SIDEBAR */}
         <aside className="hidden lg:flex flex-col gap-6">
-          {/* Profil enseignant avec Avatar */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            {/* Avatar */}
             <div className="flex justify-center mb-3">
               <AvatarDisplay
                 name={user.fullName || "Enseignant"}
@@ -248,7 +560,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 {user.etablissement
-                  ? `${user.etablissement.nom}${user.etablissement.type ? " • " + user.etablissement.type : ""}${user.etablissement.niveau ? " • " + user.etablissement.niveau : ""}`
+                  ? `${user.etablissement.nom}${user.etablissement.type ? " • " + user.etablissement.type : ""}`
                   : "Établissement non renseigné"}
               </p>
 
@@ -262,40 +574,38 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                 {user.isValidated ? (
                   <>
                     <CheckCircle className="w-3.5 h-3.5" />
-                    Validé par l'établissement
+                    Validé
                   </>
                 ) : (
                   <>
                     <Clock className="w-3.5 h-3.5" />
-                    En attente de validation
+                    En attente
                   </>
                 )}
               </div>
             </div>
 
-            {/* Stats avec parcours */}
             <div className="grid grid-cols-3 gap-3 mt-5">
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-3 text-center">
                 <div className="text-base font-semibold text-indigo-600">
                   {experiences.length}
                 </div>
-                <div className="text-xs text-slate-600">Expériences</div>
+                <div className="text-xs text-slate-600">Exp.</div>
               </div>
               <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3 text-center">
                 <div className="text-base font-semibold text-emerald-600">
                   {formations.length}
                 </div>
-                <div className="text-xs text-slate-600">Formations</div>
+                <div className="text-xs text-slate-600">Form.</div>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-3 text-center">
                 <div className="text-base font-semibold text-amber-600">
                   {certifications.length}
                 </div>
-                <div className="text-xs text-slate-600">Certifications</div>
+                <div className="text-xs text-slate-600">Cert.</div>
               </div>
             </div>
 
-            {/* Bouton Import CV */}
             <button
               onClick={() => setShowUploadCV(true)}
               className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 text-sm font-medium"
@@ -305,7 +615,6 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
             </button>
           </div>
 
-          {/* Menu */}
           <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
             <ul className="space-y-1 text-sm">
               <li>
@@ -369,7 +678,6 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
 
         {/* MAIN FEED */}
         <main className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          {/* Header / Tabs */}
           <div className="p-6 border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-purple-50">
             <h2 className="text-xl font-bold text-slate-800">Tableau de bord</h2>
             <p className="text-sm text-slate-600">
@@ -397,7 +705,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                 }`}
               >
                 <Gift className="w-4 h-4" />
-                Dons reçus
+                Dons
               </button>
               <button 
                 onClick={() => setActiveView("activite")}
@@ -413,12 +721,96 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-6 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto">
             
             {/* Vue Parcours */}
             {activeView === "parcours" && (
               <div className="space-y-6">
+                
+                {/* Message d'accueil pour profil vide */}
+                {isProfileEmpty && !loading && (
+                  <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200 rounded-2xl p-8">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                        <Sparkles className="w-8 h-8 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">
+                          Valorisez votre parcours professionnel !
+                        </h3>
+                        <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                          Bienvenue ! Enrichissez votre profil pour augmenter vos chances de recevoir des dons et des opportunités. 
+                          Vous avez deux options :
+                        </p>
+                        
+                        <div className="grid md:grid-cols-2 gap-4 mb-4">
+                          <div className="bg-white rounded-xl p-4 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <Upload className="w-5 h-5 text-indigo-600" />
+                              </div>
+                              <h4 className="font-semibold text-slate-800">Option 1 : Import CV</h4>
+                            </div>
+                            <p className="text-xs text-slate-600 mb-3">
+                              Notre IA analyse automatiquement votre CV et extrait vos expériences, formations et certifications.
+                            </p>
+                            <button
+                              onClick={() => setShowUploadCV(true)}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
+                            >
+                              <Upload className="w-4 h-4" />
+                              Importer mon CV
+                            </button>
+                          </div>
+
+                          <div className="bg-white rounded-xl p-4 border-2 border-emerald-200 hover:border-emerald-400 transition-all">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                <Edit3 className="w-5 h-5 text-emerald-600" />
+                              </div>
+                              <h4 className="font-semibold text-slate-800">Option 2 : Ajout manuel</h4>
+                            </div>
+                            <p className="text-xs text-slate-600 mb-3">
+                              Ajoutez manuellement vos expériences, formations et certifications une par une.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShowNewExpForm(true)}
+                                className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-all text-xs font-medium"
+                                title="Ajouter une expérience"
+                              >
+                                <Plus className="w-4 h-4 mx-auto" />
+                              </button>
+                              <button
+                                onClick={() => setShowNewFormForm(true)}
+                                className="flex-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all text-xs font-medium"
+                                title="Ajouter une formation"
+                              >
+                                <Plus className="w-4 h-4 mx-auto" />
+                              </button>
+                              <button
+                                onClick={() => setShowNewCertForm(true)}
+                                className="flex-1 px-3 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-all text-xs font-medium"
+                                title="Ajouter une certification"
+                              >
+                                <Plus className="w-4 h-4 mx-auto" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
+                          <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-blue-800">
+                            <strong>Astuce :</strong> Un profil complet augmente vos chances de recevoir des dons de 60% ! 
+                            Les donateurs cherchent des enseignants avec un parcours bien documenté.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Section Expériences */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
@@ -427,7 +819,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                       Expériences professionnelles
                     </h3>
                     <button
-                      onClick={() => setActiveView("parcours")}
+                      onClick={() => setShowNewExpForm(!showNewExpForm)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-md transition-all text-sm font-medium"
                     >
                       <Plus className="w-4 h-4" />
@@ -540,11 +932,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                               )}
                             </div>
                             <button
-                              onClick={() => {
-                                if (confirm("Supprimer cette expérience ?")) {
-                                  deleteExperience(exp.id);
-                                }
-                              }}
+                              onClick={() => handleDeleteItem("experience", exp.id, exp.poste)}
                               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -656,11 +1044,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                               )}
                             </div>
                             <button
-                              onClick={() => {
-                                if (confirm("Supprimer cette formation ?")) {
-                                  deleteFormation(form.id);
-                                }
-                              }}
+                              onClick={() => handleDeleteItem("formation", form.id, form.diplome)}
                               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -779,11 +1163,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                               )}
                             </div>
                             <button
-                              onClick={() => {
-                                if (confirm("Supprimer cette certification ?")) {
-                                  deleteCertification(cert.id);
-                                }
-                              }}
+                              onClick={() => handleDeleteItem("certification", cert.id, cert.titre)}
                               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -841,7 +1221,7 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-800">Reconnaissances</h3>
-                      <p className="text-sm text-slate-600">Vos contributions reconnues</p>
+                      <p className="text-sm text-slate-600">Vos contributions</p>
                     </div>
                   </div>
                   <ul className="space-y-3">
@@ -851,19 +1231,8 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                           <Award className="w-4 h-4 text-purple-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-800">Attestation de contribution au projet "Salle informatique"</p>
-                          <p className="text-xs text-slate-500 mt-1">Délivrée le 15 mars 2025</p>
-                        </div>
-                      </div>
-                    </li>
-                    <li className="bg-white rounded-xl p-4 border border-purple-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Award className="w-4 h-4 text-amber-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-800">Mention d'honneur — Semaine de l'éducation</p>
-                          <p className="text-xs text-slate-500 mt-1">Délivrée le 8 février 2025</p>
+                          <p className="text-sm font-medium text-slate-800">Attestation de contribution</p>
+                          <p className="text-xs text-slate-500 mt-1">15 mars 2025</p>
                         </div>
                       </div>
                     </li>
@@ -877,8 +1246,8 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-800">Projets participés</h3>
-                      <p className="text-sm text-slate-600">{stats.projetsParticipe} projets au total</p>
-                    </div>
+                      <p className="text-sm text-slate-600">{stats.projetsParticipe} projets</p>
+                      </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
@@ -1159,6 +1528,26 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
           </div>
         </div>
       )}
+
+      {/* Modals de confirmation et notification */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        isLoading={confirmModal.isLoading}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        icon={confirmModal.icon}
+      />
+
+      <NotificationModal
+        isOpen={notificationModal.isOpen}
+        onClose={() => setNotificationModal(prev => ({ ...prev, isOpen: false }))}
+        type={notificationModal.type}
+        title={notificationModal.title}
+        message={notificationModal.message}
+      />
     </div>
   );
 }

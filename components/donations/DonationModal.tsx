@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { X, Upload, Plus, AlertCircle, Heart, Building2, GraduationCap, FileText, Trash2, Search, ChevronDown, ChevronUp } from "lucide-react";
-import { AvatarDisplay } from "@/components/AvatarDisplay";
+import { X, Upload, Plus, AlertCircle, Heart, Building2, GraduationCap, FileText, Trash2, Search, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { AvatarDisplay } from "../AvatarDisplay";
 
-const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
+const DonationModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     type: 'MONETAIRE',
     montant: '',
     items: [],
     destinationType: 'project',
     destinationId: '',
-    photos: []
+    photos: [],
+    raison: '' // ✅ Champ raison ajouté
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +59,6 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
       if (response.ok) {
         const data = await response.json();
         
-        // Sélectionner les bonnes destinations selon le type
         let destinationList = [];
         if (formData.destinationType === 'project') {
           destinationList = data.projects || [];
@@ -235,6 +235,7 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
         montant: formData.type === 'MONETAIRE' ? parseFloat(formData.montant) : undefined,
         items: formData.type !== 'MONETAIRE' ? formData.items : undefined,
         photos: formData.photos.map(photo => photo.base64),
+        raison: formData.raison || undefined, // ✅ Inclure la raison
         ...(formData.destinationType === 'project' && { projectId: formData.destinationId }),
         ...(formData.destinationType === 'etablissement' && { etablissementId: formData.destinationId }),
         ...(formData.destinationType === 'personnel' && { personnelId: formData.destinationId }),
@@ -266,7 +267,8 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
         items: [],
         destinationType: 'project',
         destinationId: '',
-        photos: []
+        photos: [],
+        raison: '' // ✅ Reset de la raison
       });
       setCurrentItem({ name: '', quantity: '' });
       setSearchTerm('');
@@ -308,7 +310,6 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
     return new Intl.NumberFormat('fr-MG').format(parseInt(value));
   };
 
-  // Filtrer les destinations selon la recherche
   const filteredDestinations = destinations.filter(dest => {
     const searchLower = searchTerm.toLowerCase();
     const name = (dest.nom || dest.fullName || dest.titre || '').toLowerCase();
@@ -316,10 +317,7 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
     return name.includes(searchLower) || secondary.includes(searchLower);
   });
 
-  // Limiter à 10 résultats
   const displayedDestinations = filteredDestinations.slice(0, 10);
-
-  // Trouver la destination sélectionnée
   const selectedDestination = destinations.find(d => d.id === formData.destinationId);
 
   if (!isOpen) return null;
@@ -498,6 +496,29 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
+          {/* ✅ NOUVEAU : Raison du don */}
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border-2 border-purple-200">
+            <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              Raison de votre don (optionnel)
+            </label>
+            <textarea
+              value={formData.raison}
+              onChange={(e) => handleInputChange('raison', e.target.value)}
+              placeholder="Exprimez la motivation de votre générosité... (ex: 'Pour soutenir l'éducation des enfants de ma région natale', 'En mémoire de...', etc.)"
+              maxLength={1000}
+              rows={4}
+              className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none bg-white"
+            />
+            <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Ce message sera visible par le bénéficiaire
+              </span>
+              <span>{formData.raison.length}/1000 caractères</span>
+            </div>
+          </div>
+
           {/* Type de destination */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -529,7 +550,7 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Sélection du bénéficiaire AVEC RECHERCHE */}
+          {/* Sélection du bénéficiaire */}
           <div ref={dropdownRef}>
             <label className="block text-sm font-semibold text-slate-700 mb-3">
               Bénéficiaire * <span className="text-xs font-normal text-slate-500">(Tapez pour rechercher)</span>
@@ -542,7 +563,6 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
               </div>
             ) : (
               <div className="relative">
-                {/* Barre de recherche */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
@@ -598,7 +618,6 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
                   </div>
                 )}
 
-                {/* Dropdown des résultats */}
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-2 max-h-80 overflow-y-auto bg-white border-2 border-slate-200 rounded-xl shadow-xl z-50">
                     {displayedDestinations.length === 0 ? (
@@ -653,7 +672,6 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
                           </button>
                         ))}
                         
-                        {/* Indicateur si plus de résultats */}
                         {filteredDestinations.length > 10 && (
                           <div className="p-3 bg-slate-50 text-center text-sm text-slate-600">
                             {filteredDestinations.length - 10} autre(s) résultat(s). 
@@ -761,4 +779,4 @@ const ImprovedDonationModalV2 = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-export default ImprovedDonationModalV2;
+export default DonationModal;

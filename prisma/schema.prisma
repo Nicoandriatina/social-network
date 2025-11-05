@@ -211,7 +211,7 @@ model Don {
   statut           DonStatus   @default(EN_ATTENTE)
   dateEnvoi        DateTime?
   dateReception    DateTime?
-
+  raison           String?     @db.Text
   project          Project?    @relation(fields: [projectId], references: [id])
   projectId        String?
 
@@ -232,7 +232,6 @@ model Don {
   updatedAt        DateTime    @updatedAt
   activityLogs     DonationActivityLog[]
   
-  // 🔥 NOUVELLE RELATION
   notifications    Notification[]
 }
 

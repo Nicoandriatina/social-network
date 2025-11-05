@@ -340,7 +340,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Package, Truck, AlertCircle, Clock, ChevronDown, ChevronUp, X, Send } from "lucide-react";
+import { CheckCircle2, Package, Truck, AlertCircle, Clock, ChevronDown, ChevronUp, X, Send, MessageSquare } from "lucide-react";
 
 // Modal de confirmation avant d'envoyer un don
 const ConfirmStatusChangeModal = ({ 
@@ -624,6 +624,11 @@ const UpdatedDonationStatusManager = ({ donations, onStatusUpdate, userType }) =
         primary: don.beneficiairePersonnel.fullName,
         secondary: 'Personnel éducatif'
       };
+    } else if (don.destination) {
+      return {
+        primary: don.destination.name || don.destination.primary || 'Destination',
+        secondary: don.destination.etablissement || don.destination.secondary || ''
+      };
     }
     return { primary: 'Destination inconnue', secondary: '' };
   };
@@ -753,7 +758,18 @@ const UpdatedDonationStatusManager = ({ donations, onStatusUpdate, userType }) =
                   <span className="text-sm font-medium">{statusInfo.label}</span>
                 </div>
               </div>
-
+              {/* ✅ NOUVEAU : Raison du don */}
+                {don.raison && (
+                  <div className="mt-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                    <h4 className="text-sm font-medium text-purple-800 mb-2 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Message du donateur
+                    </h4>
+                    <p className="text-sm text-purple-700 italic leading-relaxed">
+                      "{don.raison}"
+                    </p>
+                  </div>
+                )}
               {/* Timeline des dates */}
               <div className="bg-slate-50 rounded-lg p-4 mb-4">
                 <h4 className="text-sm font-medium text-slate-700 mb-3">Suivi du don</h4>
