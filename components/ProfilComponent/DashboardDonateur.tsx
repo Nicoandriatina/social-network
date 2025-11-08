@@ -613,10 +613,12 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
                   Découvrir des projets
                 </button>
               </Link>
+              <Link href="dashboard/messages">
               <button className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium">
                 <MessageSquare className="w-4 h-4" />
                 Contacter un établissement
               </button>
+              </Link>
             </div>
           </div>
 

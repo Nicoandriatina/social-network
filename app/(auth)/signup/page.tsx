@@ -15,6 +15,8 @@
 // import { useRouter } from "next/navigation";
 // import { Rocket, AlertCircle, CheckCircle2, Loader2, X, Building2, GraduationCap, Heart } from "lucide-react";
 
+// // ========== VALIDATION ZOD ==========
+
 // const baseFields = z.object({
 //   email: z.string().email("Email invalide"),
 //   country: z.string().min(2, "Pays requis"),
@@ -35,10 +37,30 @@
 // });
 
 // const enseignantFields = z.object({
-//   etablissementId: z.string().optional(), // ✅ Optionnel si l'établissement n'existe pas encore
+//   etablissementId: z.string().optional(),
 //   position: z.string().optional(),
 //   experience: z.string().optional(),
 //   degree: z.string().optional(),
+//   startYear: z.coerce.number().optional(),
+//   endYear: z.coerce.number().optional(),
+//   isCurrentTeacher: z.boolean().optional(),
+// }).refine((data) => {
+//   // Si un établissement est sélectionné, l'année de début est requise
+//   if (data.etablissementId && !data.startYear) {
+//     return false;
+//   }
+//   // Si ce n'est pas un enseignant actuel, l'année de fin est requise
+//   if (data.etablissementId && data.startYear && data.isCurrentTeacher === false && !data.endYear) {
+//     return false;
+//   }
+//   // L'année de fin doit être après l'année de début
+//   if (data.startYear && data.endYear && data.endYear < data.startYear) {
+//     return false;
+//   }
+//   return true;
+// }, {
+//   message: "Veuillez remplir correctement les informations de période d'enseignement",
+//   path: ["startYear"],
 // });
 
 // const donateurFields = z.object({
@@ -52,7 +74,8 @@
 //   z.object({ profileType: z.literal("donateur") }).merge(baseFields).merge(donateurFields),
 // ]);
 
-// // Composant Modal
+// // ========== COMPOSANT MODAL ==========
+
 // interface ModalProps {
 //   isOpen: boolean;
 //   onClose: () => void;
@@ -174,6 +197,8 @@
 //   );
 // };
 
+// // ========== COMPOSANT PRINCIPAL ==========
+
 // export default function RegisterPage() {
 //   const [profileType, setProfileType] = useState<string | null>(null);
 //   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -234,11 +259,19 @@
 //       };
 //     }
     
-//     // ✅ ENSEIGNANT - Avec ou sans établissement
+//     // ✅ ENSEIGNANT
 //     if (data.profileType === "enseignant") {
-//       // Si un établissement est sélectionné, l'ajouter
 //       if (data.etablissementId) {
 //         payload.etablissementId = data.etablissementId;
+        
+//         // ✅ Ajouter les années d'enseignement
+//         if (data.startYear) {
+//           payload.scolarityHistory = {
+//             startYear: data.startYear,
+//             endYear: data.isCurrentTeacher ? null : data.endYear,
+//             isCurrentTeacher: data.isCurrentTeacher ?? true,
+//           };
+//         }
 //       }
       
 //       payload.enseignant = {
@@ -258,6 +291,8 @@
 
 //     try {
 //       setRegistering(true);
+//       console.log("📤 Payload envoyé:", payload);
+      
 //       const res = await fetch("/api/auth/signup", {
 //         method: "POST",
 //         headers: { "Content-Type": "application/json" },
@@ -270,6 +305,7 @@
 //       }
 
 //       const result = await res.json();
+//       console.log("✅ Résultat:", result);
       
 //       if (data.profileType === "enseignant") {
 //         if (data.etablissementId) {
@@ -300,6 +336,7 @@
 //         router.push("/login");
 //       }, 3000);
 //     } catch (err: any) {
+//       console.error("❌ Erreur:", err);
 //       showErrorModal("Erreur", err.message);
 //     } finally {
 //       setRegistering(false);
@@ -332,6 +369,7 @@
 //   return (
 //     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4">
 //       <div className="max-w-4xl mx-auto">
+//         {/* En-tête */}
 //         <div className="text-center mb-8">
 //           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-transparent bg-clip-text mb-3">
 //             Rejoignez notre communauté
@@ -341,19 +379,21 @@
 //           </p>
 //         </div>
 
+//         {/* Carte principale */}
 //         <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
 //           <StepSelector current={profileType ? 1 : 0} />
 
 //           <ProfileSelector selected={profileType} onSelect={setProfileType} />
 
+//           {/* Alerte d'erreurs */}
 //           {Object.keys(errors).length > 0 && (
 //             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-shake">
 //               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
 //               <div className="text-sm text-red-800">
 //                 <p className="font-semibold">Veuillez corriger les erreurs suivantes :</p>
 //                 <ul className="mt-2 space-y-1 list-disc list-inside">
-//                   {Object.values(errors).map((error: any, index) => (
-//                     <li key={index}>{error.message}</li>
+//                   {Object.entries(errors).map(([key, error]: [string, any]) => (
+//                     <li key={key}>{error.message}</li>
 //                   ))}
 //                 </ul>
 //               </div>
@@ -377,7 +417,7 @@
 //               <EtablissementFields register={register} errors={errors} />
 //             )}
 //             {profileType === "enseignant" && (
-//               <EnseignantFields register={register} errors={errors} />
+//               <EnseignantFields register={register} errors={errors} setValue={setValue} />
 //             )}
 //             {profileType === "donateur" && (
 //               <DonateurFields register={register} errors={errors} />
@@ -385,6 +425,7 @@
 
 //             <AvatarUpload onAvatarChange={setAvatarUrl} isPublic={true} />
 
+//             {/* Bouton de soumission */}
 //             <div className="pt-6 border-t">
 //               <button
 //                 type="submit"
@@ -414,11 +455,13 @@
 //           </form>
 //         </div>
 
+//         {/* Footer */}
 //         <div className="text-center mt-8 text-sm text-gray-500">
 //           <p>En créant un compte, vous acceptez nos conditions d'utilisation</p>
 //         </div>
 //       </div>
 
+//       {/* Modal */}
 //       <SuccessModal
 //         isOpen={modalState.isOpen}
 //         onClose={closeModal}
@@ -436,7 +479,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as z from "zod";
 import StepSelector from "@/components/RegisterComponent/StepSelector";
 import ProfileSelector from "@/components/RegisterComponent/ProfileSelector";
@@ -446,7 +489,7 @@ import EtablissementFields from "@/components/RegisterComponent/EtablissementFie
 import EnseignantFields from "@/components/RegisterComponent/EnseignantFields";
 import DonateurFields from "@/components/RegisterComponent/DonateurFields";
 import { useRouter } from "next/navigation";
-import { Rocket, AlertCircle, CheckCircle2, Loader2, X, Building2, GraduationCap, Heart } from "lucide-react";
+import { Rocket, AlertCircle, CheckCircle2, Loader2, X, Building2, GraduationCap, Heart, ArrowUp } from "lucide-react";
 
 // ========== VALIDATION ZOD ==========
 
@@ -478,15 +521,12 @@ const enseignantFields = z.object({
   endYear: z.coerce.number().optional(),
   isCurrentTeacher: z.boolean().optional(),
 }).refine((data) => {
-  // Si un établissement est sélectionné, l'année de début est requise
   if (data.etablissementId && !data.startYear) {
     return false;
   }
-  // Si ce n'est pas un enseignant actuel, l'année de fin est requise
   if (data.etablissementId && data.startYear && data.isCurrentTeacher === false && !data.endYear) {
     return false;
   }
-  // L'année de fin doit être après l'année de début
   if (data.startYear && data.endYear && data.endYear < data.startYear) {
     return false;
   }
@@ -630,6 +670,109 @@ const SuccessModal = ({ isOpen, onClose, type, title, message, profileType }: Mo
   );
 };
 
+// ========== MODAL D'ERREURS DE VALIDATION ==========
+
+interface ErrorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  errors: { field: string; message: string }[];
+  onScrollToField: (field: string) => void;
+}
+
+const ErrorValidationModal = ({ isOpen, onClose, errors, onScrollToField }: ErrorModalProps) => {
+  if (!isOpen) return null;
+
+  const fieldLabels: Record<string, string> = {
+    email: "Adresse email",
+    country: "Pays",
+    password: "Mot de passe",
+    confirmPassword: "Confirmation mot de passe",
+    fullName: "Nom complet",
+    phone: "Numéro de téléphone",
+    adminType: "Type administratif",
+    level: "Niveau d'enseignement",
+    studentCount: "Nombre d'élèves",
+    foundedYear: "Année de création",
+    donorType: "Type de donateur",
+    sector: "Secteur d'activité",
+    etablissementId: "Établissement",
+    startYear: "Année de début",
+    endYear: "Année de fin",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      <div className="relative bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 animate-in zoom-in-95 duration-300 max-h-[80vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
+        >
+          <X className="w-5 h-5 text-gray-500" />
+        </button>
+
+        <div>
+          {/* Header */}
+          <div className="mb-6 flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-red-600" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                Informations manquantes
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Veuillez corriger les {errors.length} erreur{errors.length > 1 ? 's' : ''} suivante{errors.length > 1 ? 's' : ''} :
+              </p>
+            </div>
+          </div>
+
+          {/* Liste des erreurs */}
+          <div className="space-y-3 mb-6">
+            {errors.map((error, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  onScrollToField(error.field);
+                  onClose();
+                }}
+                className="w-full text-left p-4 bg-red-50 hover:bg-red-100 border-2 border-red-200 rounded-xl transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                      {fieldLabels[error.field] || error.field}
+                      <ArrowUp className="w-4 h-4 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </p>
+                    <p className="text-sm text-red-700">{error.message}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <button
+            onClick={onClose}
+            className="w-full py-3 px-6 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95"
+          >
+            Compris, je corrige
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ========== COMPOSANT PRINCIPAL ==========
 
 export default function RegisterPage() {
@@ -648,7 +791,12 @@ export default function RegisterPage() {
     title: "",
     message: "",
   });
+  
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{ field: string; message: string }[]>([]);
+  
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     register,
@@ -667,6 +815,18 @@ export default function RegisterPage() {
     }
   }, [profileType, setValue]);
 
+  // Fonction pour scroller vers un champ avec erreur
+  const scrollToField = (fieldName: string) => {
+    const element = document.querySelector(`[name="${fieldName}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Focus sur le champ
+      setTimeout(() => {
+        (element as HTMLElement).focus();
+      }, 500);
+    }
+  };
+
   const onSubmit = async (data: any) => {
     console.log("📦 Données soumises:", data);
     
@@ -680,7 +840,6 @@ export default function RegisterPage() {
       avatar: avatarUrl,
     };
 
-    // ✅ ÉTABLISSEMENT
     if (data.profileType === "etablissement") {
       payload.etablissement = {
         nom: data.fullName,
@@ -692,12 +851,10 @@ export default function RegisterPage() {
       };
     }
     
-    // ✅ ENSEIGNANT
     if (data.profileType === "enseignant") {
       if (data.etablissementId) {
         payload.etablissementId = data.etablissementId;
         
-        // ✅ Ajouter les années d'enseignement
         if (data.startYear) {
           payload.scolarityHistory = {
             startYear: data.startYear,
@@ -714,7 +871,6 @@ export default function RegisterPage() {
       };
     }
     
-    // ✅ DONATEUR
     if (data.profileType === "donateur") {
       payload.donateur = {
         donorType: data.donorType,
@@ -799,6 +955,27 @@ export default function RegisterPage() {
     setModalState({ ...modalState, isOpen: false });
   };
 
+  // Gérer les erreurs de validation
+  const handleFormError = () => {
+    if (!profileType) {
+      showErrorModal("Attention", "Veuillez choisir un type de profil");
+      return;
+    }
+
+    // Collecter toutes les erreurs
+    const errorList: { field: string; message: string }[] = [];
+    Object.entries(errors).forEach(([field, error]: [string, any]) => {
+      if (error && error.message) {
+        errorList.push({ field, message: error.message });
+      }
+    });
+
+    if (errorList.length > 0) {
+      setValidationErrors(errorList);
+      setErrorModalOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -818,30 +995,9 @@ export default function RegisterPage() {
 
           <ProfileSelector selected={profileType} onSelect={setProfileType} />
 
-          {/* Alerte d'erreurs */}
-          {Object.keys(errors).length > 0 && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-shake">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-red-800">
-                <p className="font-semibold">Veuillez corriger les erreurs suivantes :</p>
-                <ul className="mt-2 space-y-1 list-disc list-inside">
-                  {Object.entries(errors).map(([key, error]: [string, any]) => (
-                    <li key={key}>{error.message}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-
           <form
-            onSubmit={(e) => {
-              if (!profileType) {
-                showErrorModal("Attention", "Veuillez choisir un type de profil");
-                e.preventDefault();
-                return;
-              }
-              handleSubmit(onSubmit)(e);
-            }}
+            ref={formRef}
+            onSubmit={handleSubmit(onSubmit, handleFormError)}
             className="space-y-8"
           >
             <BasicInfoFields register={register} errors={errors} />
@@ -894,7 +1050,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       <SuccessModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
@@ -902,6 +1058,13 @@ export default function RegisterPage() {
         title={modalState.title}
         message={modalState.message}
         profileType={modalState.profileType}
+      />
+
+      <ErrorValidationModal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        errors={validationErrors}
+        onScrollToField={scrollToField}
       />
     </div>
   );

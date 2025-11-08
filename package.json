@@ -2,12 +2,15 @@
   "name": "mada-social-network",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "node server.js",
     "build": "next build",
     "start": "NODE_ENV=production node server.js",
-    "lint": "next lint"
-    
+    "lint": "next lint",
+    "create-superadmin": "tsx scripts/create-superadmin.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -40,6 +43,8 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
     "react-i18next": "^15.7.4",
+    "rechart": "^0.0.1",
+    "recharts": "^3.3.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.19",
@@ -49,6 +54,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import Link from "next/link";
 import ProfileViewEtablissement from "@/components/ProfilComponent/ProfileViewEtablissemnet";
@@ -29,6 +29,7 @@ type UserProfile = {
 export default function ProfilePage() {
   const { user: currentUser, loading: currentUserLoading } = useCurrentUser();
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -39,6 +40,13 @@ export default function ProfilePage() {
     if (!id) return;
     fetchProfile();
   }, [id]);
+
+  // Redirection automatique si c'est le propre profil
+  useEffect(() => {
+    if (profile?.isOwnProfile) {
+      router.push('/dashboard');
+    }
+  }, [profile?.isOwnProfile, router]);
 
   const fetchProfile = async () => {
     try {
@@ -81,17 +89,6 @@ export default function ProfilePage() {
     return (
       <div className="p-10 text-center">
         <p className="text-gray-500">Chargement du profil...</p>
-      </div>
-    );
-  }
-
-  if (profile?.isOwnProfile) {
-    return (
-      <div className="p-10 text-center">
-        <p className="mb-4">Vous êtes sur votre propre profil</p>
-        <Link href="/dashboard" className="text-indigo-600 hover:underline">
-          ← Aller au dashboard
-        </Link>
       </div>
     );
   }

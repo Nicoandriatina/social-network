@@ -34,6 +34,12 @@ enum EtablissementNiveau {
   UNIVERSITE
   ORGANISME
 }
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  EMOJI
+}
 
 enum ProjectCategory {
   CONSTRUCTION
@@ -258,12 +264,22 @@ model Message {
   sentAt    DateTime @default(now())
   read      Boolean  @default(false)  
   readAt    DateTime?
+  type      MessageType @default(TEXT)
+    // Cloudinary
+  fileUrl   String?
+  fileName  String?
+  fileSize  Int?
+  mimeType  String?
+  publicId  String?
 
   // 🔥 NOUVELLE RELATION
   notifications Notification[]
 
+  
   @@index([fromId, toId])
-  @@index([toId, read])                
+  @@index([toId, read])
+  @@index([type])
+  @@index([publicId])                
 }
 
 // 🔥 NOUVEAU MODÈLE NOTIFICATION
