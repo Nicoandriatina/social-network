@@ -319,7 +319,7 @@ export async function POST(req: Request) {
         isValidated: user.isValidated
       },
       loginMethod: searchType,
-      redirectTo: user.role === "SUPERADMIN" ? "/admin" : "/dashboard"
+      redirectTo: user.role === "SUPERADMIN" ? "/admin" : "/dashboard/acceuil"
     });
 
   } catch (e) {

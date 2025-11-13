@@ -75,50 +75,99 @@ export default function DonateurDashboard({ user }: DonateurDashboardProps) {
   };
 
   // Charger les dons de l'utilisateur
+  // const loadDonations = async () => {
+  //   try {
+  //     setLoading(true);
+  //     setError(null);
+  //     const response = await fetch('/api/donations');
+      
+  //     if (!response.ok) {
+  //       throw new Error('Erreur lors du chargement des dons');
+  //     }
+      
+  //     const data = await response.json();
+  //     setDonations(data.donations || []);
+      
+  //     const totalDons = data.donations.length;
+  //     const projetsSoutenus = new Set(
+  //       data.donations
+  //         .filter(d => d.destination.type === 'project')
+  //         .map(d => d.destination.name)
+  //     ).size;
+
+  //     const totalMonetaire = data.donations
+  //       .filter(d => d.type === 'MONETAIRE' && d.montant)
+  //       .reduce((sum, d) => sum + (d.montant || 0), 0);
+
+  //     const enAttente = data.donations.filter(d => d.statut === 'EN_ATTENTE').length;
+  //     const envoyes = data.donations.filter(d => d.statut === 'ENVOYE').length;
+  //     const recus = data.donations.filter(d => d.statut === 'RECEPTIONNE').length;
+      
+  //     setStats({
+  //       totalDons,
+  //       projetsSoutenus,
+  //       totalMonetaire,
+  //       enAttente,
+  //       envoyes,
+  //       recus
+  //     });
+  //   } catch (error) {
+  //     console.error('Erreur chargement dons:', error);
+  //     setError(error.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const loadDonations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/donations');
-      
-      if (!response.ok) {
-        throw new Error('Erreur lors du chargement des dons');
-      }
-      
-      const data = await response.json();
-      setDonations(data.donations || []);
-      
-      const totalDons = data.donations.length;
-      const projetsSoutenus = new Set(
-        data.donations
-          .filter(d => d.destination.type === 'project')
-          .map(d => d.destination.name)
-      ).size;
-
-      const totalMonetaire = data.donations
-        .filter(d => d.type === 'MONETAIRE' && d.montant)
-        .reduce((sum, d) => sum + (d.montant || 0), 0);
-
-      const enAttente = data.donations.filter(d => d.statut === 'EN_ATTENTE').length;
-      const envoyes = data.donations.filter(d => d.statut === 'ENVOYE').length;
-      const recus = data.donations.filter(d => d.statut === 'RECEPTIONNE').length;
-      
-      setStats({
-        totalDons,
-        projetsSoutenus,
-        totalMonetaire,
-        enAttente,
-        envoyes,
-        recus
-      });
-    } catch (error) {
-      console.error('Erreur chargement dons:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    setError(null);
+    const response = await fetch('/api/donations');
+    
+    if (!response.ok) {
+      throw new Error('Erreur lors du chargement des dons');
     }
-  };
+    
+    const data = await response.json();
+    console.log('Data received:', data); // ✅ Vérifiez la structure
+    console.log('Donations:', data.donations); // ✅ Vérifiez si donations existe
+    
+    // ✅ Vérification défensive
+    const donationsList = data.donations || [];
+    setDonations(donationsList);
+    
+    const totalDons = donationsList.length;
+    const projetsSoutenus = new Set(
+      donationsList
+        .filter(d => d.destination?.type === 'project')
+        .map(d => d.destination?.name)
+        .filter(Boolean) // Enlever les valeurs null/undefined
+    ).size;
 
+    const totalMonetaire = donationsList
+      .filter(d => d.type === 'MONETAIRE' && d.montant)
+      .reduce((sum, d) => sum + (d.montant || 0), 0);
+
+    const enAttente = donationsList.filter(d => d.statut === 'EN_ATTENTE').length;
+    const envoyes = donationsList.filter(d => d.statut === 'ENVOYE').length;
+    const recus = donationsList.filter(d => d.statut === 'RECEPTIONNE').length;
+    
+    setStats({
+      totalDons,
+      projetsSoutenus,
+      totalMonetaire,
+      enAttente,
+      envoyes,
+      recus
+    });
+  } catch (error) {
+    console.error('Erreur chargement dons:', error);
+    setError(error.message);
+    setDonations([]); // ✅ Réinitialiser à un tableau vide en cas d'erreur
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     loadDonations();
   }, []);

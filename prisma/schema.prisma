@@ -40,6 +40,17 @@ enum MessageType {
   FILE
   EMOJI
 }
+enum NeedType {
+  MONETAIRE
+  MATERIEL
+  VIVRES
+}
+
+enum NeedStatus {
+  EN_COURS
+  TERMINE
+  ANNULE
+}
 
 enum ProjectCategory {
   CONSTRUCTION
@@ -184,6 +195,7 @@ model Project {
   dateDebut        DateTime?
   dateFin          DateTime?
   categorie        ProjectCategory
+  budgetEstime     Float?
 
   auteur           User           @relation("AuteurProjet", fields: [auteurId], references: [id])
   auteurId         String
@@ -192,7 +204,7 @@ model Project {
   etablissementId  String
 
   dons             Don[]
-
+  besoins          ProjectNeed[]
   // 🔥 NOUVELLE RELATION
   notifications    Notification[]
 
@@ -208,6 +220,40 @@ model Project {
   updatedAt        DateTime       @updatedAt
 }
 
+model ProjectNeed {
+  id               String      @id @default(cuid())
+  project          Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  
+  type             NeedType    // MONETAIRE, MATERIEL, VIVRES
+  titre            String      // Ex: "Achat de livres", "Rénovation salle de classe"
+  description      String      @db.Text
+  
+  // Objectifs
+  montantCible     Float?      // Pour MONETAIRE
+  quantiteCible    Int?        // Pour MATERIEL et VIVRES
+  unite            String?     // Ex: "kg", "pièces", "lots"
+  
+  // Progression
+  montantRecu      Float       @default(0)
+  quantiteRecue    Int         @default(0)
+  pourcentage      Float       @default(0) // Calculé automatiquement
+  
+  statut           NeedStatus  @default(EN_COURS)
+  priorite         Int         @default(1) // 1 = haute, 2 = moyenne, 3 = basse
+  
+  // Relations
+  dons             Don[]       @relation("NeedDonations")
+  
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  
+  @@index([projectId])
+  @@index([type])
+  @@index([statut])
+  @@map("project_needs")
+}
+
 model Don {
   id               String      @id @default(cuid())
   libelle          String
@@ -220,6 +266,9 @@ model Don {
   raison           String?     @db.Text
   project          Project?    @relation(fields: [projectId], references: [id])
   projectId        String?
+
+  need             ProjectNeed? @relation("NeedDonations", fields: [needId], references: [id])
+  needId           String? 
 
   beneficiaireEtab  Etablissement? @relation("BeneficiaireEtab", fields: [etablissementId], references: [id])
   etablissementId  String?
@@ -239,6 +288,8 @@ model Don {
   activityLogs     DonationActivityLog[]
   
   notifications    Notification[]
+
+  @@index([needId])
 }
 
 model FriendRequest {
