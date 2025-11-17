@@ -1,3 +1,478 @@
+// // app/api/donations/[id]/status/route.ts
+// import { NextResponse } from "next/server";
+// import { cookies } from "next/headers";
+// import jwt from "jsonwebtoken";
+// import { prisma } from "@/lib/prisma";
+// import { z } from "zod";
+// import { emitSocketNotification } from "@/lib/emit-socket-notification";
+// import { onDonReceived } from "@/lib/updateProjectNeeds";
+
+// export const runtime = "nodejs";
+
+// // Schéma de validation pour changer le statut
+// const updateStatusSchema = z.object({
+//   status: z.enum(["EN_ATTENTE", "ENVOYE", "RECEPTIONNE"], {
+//     required_error: "Le statut est obligatoire"
+//   }),
+// });
+
+// // PATCH - Mettre à jour le statut d'un don
+// export async function PATCH(
+//   req: Request,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const cookieStore = await cookies();
+//     const token = cookieStore.get("token")?.value;
+    
+//     if (!token) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+//       userId: string;
+//       role: string;
+//       type: string;
+//     };
+
+//     const resolvedParams = await params;
+//     const body = await req.json();
+    
+//     // Validation des données
+//     const validation = updateStatusSchema.safeParse(body);
+//     if (!validation.success) {
+//       return NextResponse.json({ 
+//         error: "Données invalides",
+//         details: validation.error.flatten()
+//       }, { status: 400 });
+//     }
+
+//     const { status } = validation.data;
+
+//     // Récupérer l'utilisateur actuel avec son établissement
+//     const currentUser = await prisma.user.findUnique({
+//       where: { id: payload.userId },
+//       include: {
+//         etablissement: {
+//           select: { id: true }
+//         }
+//       }
+//     });
+
+//     // Récupérer le don avec TOUTES ses relations nécessaires
+//     const don = await prisma.don.findUnique({
+//       where: { id: resolvedParams.id },
+//       include: {
+//         donateur: {
+//           select: { id: true, fullName: true, avatar: true }
+//         },
+//         project: {
+//           select: {
+//             id: true,
+//             auteurId: true,
+//             etablissementId: true,
+//             titre: true,
+//             etablissement: {
+//               select: {
+//                 id: true,
+//                 nom: true,
+//                 admin: {
+//                   select: { id: true }
+//                 }
+//               }
+//             },
+//             besoins: true // 🎯 Inclure les besoins pour la réponse
+//           }
+//         },
+//         beneficiaireEtab: {
+//           select: { 
+//             id: true,
+//             nom: true,
+//             admin: {
+//               select: { id: true }
+//             }
+//           }
+//         },
+//         beneficiairePersonnel: {
+//           select: {
+//             id: true,
+//             fullName: true
+//           }
+//         },
+//         need: true // 🎯 Inclure le besoin lié
+//       }
+//     });
+
+//     if (!don) {
+//       return NextResponse.json({ error: "Don non trouvé" }, { status: 404 });
+//     }
+
+//     // Vérifier les permissions selon le type d'utilisateur et le statut demandé
+//     let hasPermission = false;
+
+//     if (status === "ENVOYE") {
+//       // Seul le donateur peut marquer comme "ENVOYÉ"
+//       hasPermission = don.donateurId === payload.userId;
+      
+//       console.log('🔍 Vérification permission ENVOYE:', {
+//         donateurId: don.donateurId,
+//         currentUserId: payload.userId,
+//         hasPermission
+//       });
+      
+//     } else if (status === "RECEPTIONNE") {
+//       // Seul le bénéficiaire peut marquer comme "RÉCEPTIONNÉ"
+      
+//       if (don.project) {
+//         // Don vers un projet : l'auteur du projet OU un admin de l'établissement du projet peut valider
+//         const isProjectAuthor = don.project.auteurId === payload.userId;
+        
+//         // Vérifier si l'utilisateur est admin de l'établissement du projet
+//         let isProjectEtabAdmin = false;
+//         if (payload.type === "ETABLISSEMENT" && currentUser?.etablissement) {
+//           // L'utilisateur de type ETABLISSEMENT est admin de son propre établissement
+//           isProjectEtabAdmin = currentUser.etablissement.id === don.project.etablissementId;
+//         } else {
+//           // Vérifier dans la liste des admins explicites
+//           isProjectEtabAdmin = don.project.etablissement?.admin.some(
+//             admin => admin.id === payload.userId
+//           ) || false;
+//         }
+        
+//         hasPermission = isProjectAuthor || isProjectEtabAdmin;
+        
+//         console.log('🔍 Vérification permission RECEPTIONNE (projet):', {
+//           projectAuteurId: don.project.auteurId,
+//           projectEtablissementId: don.project.etablissementId,
+//           currentUserEtablissementId: currentUser?.etablissement?.id,
+//           userType: payload.type,
+//           projectEtabAdmins: don.project.etablissement?.admin.map(a => a.id),
+//           currentUserId: payload.userId,
+//           isProjectAuthor,
+//           isProjectEtabAdmin,
+//           hasPermission
+//         });
+        
+//       } else if (don.etablissementId) {
+//         // Don vers un établissement directement
+        
+//         // Si l'utilisateur est de type ETABLISSEMENT, vérifier s'il est le propriétaire
+//         if (payload.type === "ETABLISSEMENT" && currentUser?.etablissement) {
+//           hasPermission = currentUser.etablissement.id === don.etablissementId;
+//         } else {
+//           // Sinon, vérifier dans la liste des admins explicites
+//           hasPermission = don.beneficiaireEtab?.admin.some(
+//             admin => admin.id === payload.userId
+//           ) || false;
+//         }
+        
+//         console.log('🔍 Vérification permission RECEPTIONNE (établissement):', {
+//           donEtablissementId: don.etablissementId,
+//           currentUserEtablissementId: currentUser?.etablissement?.id,
+//           userType: payload.type,
+//           etablissementAdmins: don.beneficiaireEtab?.admin.map(a => a.id),
+//           currentUserId: payload.userId,
+//           hasPermission
+//         });
+        
+//       } else if (don.personnelId) {
+//         // Don vers un personnel : le personnel peut valider
+//         hasPermission = don.personnelId === payload.userId;
+        
+//         console.log('🔍 Vérification permission RECEPTIONNE (personnel):', {
+//           personnelId: don.personnelId,
+//           currentUserId: payload.userId,
+//           hasPermission
+//         });
+//       }
+      
+//     } else if (status === "EN_ATTENTE") {
+//       // Retour en arrière possible par le donateur ou le bénéficiaire
+//       const isDonateur = don.donateurId === payload.userId;
+//       const isProjectAuthor = don.project?.auteurId === payload.userId;
+      
+//       // Vérifier si admin de l'établissement bénéficiaire
+//       let isEtabAdmin = false;
+//       if (payload.type === "ETABLISSEMENT" && currentUser?.etablissement && don.etablissementId) {
+//         isEtabAdmin = currentUser.etablissement.id === don.etablissementId;
+//       } else {
+//         isEtabAdmin = don.beneficiaireEtab?.admin.some(
+//           admin => admin.id === payload.userId
+//         ) || false;
+//       }
+      
+//       const isPersonnel = don.personnelId === payload.userId;
+      
+//       hasPermission = isDonateur || isProjectAuthor || isEtabAdmin || isPersonnel;
+      
+//       console.log('🔍 Vérification permission EN_ATTENTE:', {
+//         isDonateur,
+//         isProjectAuthor,
+//         isEtabAdmin,
+//         isPersonnel,
+//         hasPermission
+//       });
+//     }
+
+//     if (!hasPermission) {
+//       console.error('❌ Permission refusée:', {
+//         status,
+//         userId: payload.userId,
+//         userType: payload.type,
+//         userEtablissementId: currentUser?.etablissement?.id,
+//         donId: don.id,
+//         donateurId: don.donateurId,
+//         etablissementId: don.etablissementId,
+//         personnelId: don.personnelId,
+//         projectId: don.projectId
+//       });
+      
+//       return NextResponse.json({ 
+//         error: "Vous n'avez pas les permissions pour modifier ce statut" 
+//       }, { status: 403 });
+//     }
+
+//     // Vérifier la cohérence du changement de statut
+//     const validTransitions = {
+//       "EN_ATTENTE": ["ENVOYE"],
+//       "ENVOYE": ["RECEPTIONNE", "EN_ATTENTE"],
+//       "RECEPTIONNE": ["EN_ATTENTE"] // Permet de "dé-réceptionner" si erreur
+//     };
+
+//     if (!validTransitions[don.statut]?.includes(status)) {
+//       return NextResponse.json({ 
+//         error: `Transition de statut invalide: ${don.statut} → ${status}` 
+//       }, { status: 400 });
+//     }
+
+//     // Mettre à jour le don
+//     const updateData: any = { statut: status };
+    
+//     if (status === "ENVOYE" && !don.dateEnvoi) {
+//       updateData.dateEnvoi = new Date();
+//     } else if (status === "RECEPTIONNE" && !don.dateReception) {
+//       updateData.dateReception = new Date();
+//     } else if (status === "EN_ATTENTE") {
+//       // Reset des dates si retour à en attente
+//       updateData.dateEnvoi = null;
+//       updateData.dateReception = null;
+//     }
+
+//     const updatedDon = await prisma.don.update({
+//       where: { id: resolvedParams.id },
+//       data: updateData,
+//       include: {
+//         donateur: {
+//           select: { id: true, fullName: true, avatar: true }
+//         },
+//         project: {
+//           select: {
+//             id: true,
+//             titre: true,
+//             etablissement: { 
+//               select: { nom: true } 
+//             },
+//             besoins: true // 🎯 Inclure les besoins mis à jour
+//           }
+//         },
+//         beneficiaireEtab: {
+//           select: { 
+//             nom: true,
+//             admin: { select: { id: true } }
+//           }
+//         },
+//         beneficiairePersonnel: {
+//           select: { id: true, fullName: true }
+//         },
+//         need: true // 🎯 Inclure le besoin lié
+//       }
+//     });
+
+//     console.log('✅ Don mis à jour avec succès:', {
+//       donId: updatedDon.id,
+//       nouveauStatut: updatedDon.statut
+//     });
+
+//     // 🎯🎯🎯 MISE À JOUR DES JAUGES DE PROGRESSION
+//     let gaugesUpdated = false;
+//     if (status === 'RECEPTIONNE') {
+//       try {
+//         console.log(`\n🔄 DÉCLENCHEMENT MISE À JOUR JAUGES pour le don ${resolvedParams.id}`);
+//         console.log(`   Type: ${don.type}`);
+//         console.log(`   Montant: ${don.montant || 'N/A'}`);
+//         console.log(`   Quantité: ${don.quantite || 'N/A'}`);
+//         console.log(`   Besoin lié: ${don.needId || 'Aucun'}`);
+//         console.log(`   Projet lié: ${don.projectId || 'Aucun'}`);
+        
+//         await onDonReceived(resolvedParams.id);
+//         gaugesUpdated = true;
+        
+//         console.log(`✅ Jauges mises à jour avec succès\n`);
+//       } catch (gaugeError) {
+//         console.error('❌ Erreur lors de la mise à jour des jauges:', gaugeError);
+//         // On continue quand même, l'important est que le statut soit mis à jour
+//       }
+//     }
+
+//     // 🔔 NOTIFICATIONS SELON LE CHANGEMENT DE STATUT
+//     try {
+//       if (status === 'ENVOYE') {
+//         // Notifier le bénéficiaire que le don est envoyé
+//         let recipientId = null;
+        
+//         if (don.project) {
+//           recipientId = don.project.auteurId;
+//         } else if (don.personnelId) {
+//           recipientId = don.personnelId;
+//         } else if (don.etablissementId && currentUser?.etablissement?.id === don.etablissementId) {
+//           // Pour un don direct à un établissement, notifier l'admin (l'utilisateur de l'établissement)
+//           recipientId = payload.userId;
+//         } else if (don.beneficiaireEtab?.admin.length > 0) {
+//           // Notifier le premier admin de l'établissement
+//           recipientId = don.beneficiaireEtab.admin[0].id;
+//         }
+
+//         if (recipientId && recipientId !== don.donateurId) {
+//           const notification = await prisma.notification.create({
+//             data: {
+//               userId: recipientId,
+//               type: 'DONATION_SHIPPED',
+//               title: 'Don en cours d\'acheminement',
+//               content: `Le don "${don.libelle}" a été envoyé et est en cours d'acheminement`,
+//               donId: don.id,
+//               relatedUserId: don.donateurId,
+//               projectId: don.projectId
+//             }
+//           });
+//           await emitSocketNotification(notification.id);
+//           console.log('✅ Notification "don envoyé" créée et émise');
+//         }
+//       } 
+//       else if (status === 'RECEPTIONNE') {
+//         // Notifier le donateur que le don est reçu
+//         const notification = await prisma.notification.create({
+//           data: {
+//             userId: don.donateurId,
+//             type: 'DONATION_RECEIVED_CONFIRMED',
+//             title: 'Don réceptionné',
+//             content: `Votre don "${don.libelle}" a été reçu avec succès. Merci pour votre générosité !`,
+//             donId: don.id,
+//             relatedUserId: payload.userId,
+//             projectId: don.projectId
+//           }
+//         });
+//         await emitSocketNotification(notification.id);
+//         console.log('✅ Notification "don réceptionné" créée et émise');
+//       }
+//     } catch (notifError) {
+//       console.error('❌ Erreur notification statut don:', notifError);
+//       // On continue même si la notification échoue
+//     }
+
+//     // 📝 LOG D'ACTIVITÉ
+//     try {
+//       await prisma.donationActivityLog.create({
+//         data: {
+//           donationId: resolvedParams.id,
+//           userId: payload.userId,
+//           action: 'STATUS_UPDATED',
+//           description: `Statut changé vers ${status}`,
+//           metadata: {
+//             oldStatus: don.statut,
+//             newStatus: status,
+//             updatedBy: payload.userId,
+//             gaugesUpdated // 🎯 Indiquer si les jauges ont été mises à jour
+//           }
+//         }
+//       });
+//     } catch (logError) {
+//       console.error('⚠️ Erreur log activité (non bloquant):', logError);
+//     }
+
+//     return NextResponse.json({ 
+//       message: "Statut mis à jour avec succès",
+//       donation: updatedDon,
+//       gaugesUpdated // 🎯 Informer le frontend que les jauges ont été mises à jour
+//     });
+
+//   } catch (error) {
+//     console.error("PATCH /api/donations/[id]/status error:", error);
+//     return NextResponse.json({ error: "Server error" }, { status: 500 });
+//   }
+// }
+
+// // GET - Récupérer les dons selon le profil utilisateur
+// export async function GET(
+//   req: Request,
+//   { params }: { params: Promise<{ id: string }> }
+// ) {
+//   try {
+//     const cookieStore = await cookies();
+//     const token = cookieStore.get("token")?.value;
+    
+//     if (!token) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+//       userId: string;
+//       role: string;
+//       type: string;
+//     };
+
+//     // Récupérer les dons selon le type d'utilisateur
+//     let whereCondition: any = {};
+
+//     if (payload.type === "DONATEUR") {
+//       whereCondition.donateurId = payload.userId;
+//     } else if (payload.type === "ETABLISSEMENT") {
+//       // Dons reçus par l'établissement ou ses projets
+//       const user = await prisma.user.findUnique({
+//         where: { id: payload.userId },
+//         include: { etablissement: true }
+//       });
+
+//       if (user?.etablissement) {
+//         whereCondition.OR = [
+//           { etablissementId: user.etablissement.id },
+//           { project: { etablissementId: user.etablissement.id } }
+//         ];
+//       }
+//     } else if (payload.type === "ENSEIGNANT") {
+//       whereCondition.personnelId = payload.userId;
+//     }
+
+//     const donations = await prisma.don.findMany({
+//       where: whereCondition,
+//       include: {
+//         donateur: {
+//           select: { fullName: true, avatar: true }
+//         },
+//         project: {
+//           select: {
+//             titre: true,
+//             etablissement: { select: { nom: true } },
+//             besoins: true // 🎯 Inclure les besoins pour voir la progression
+//           }
+//         },
+//         beneficiaireEtab: {
+//           select: { nom: true }
+//         },
+//         beneficiairePersonnel: {
+//           select: { fullName: true }
+//         },
+//         need: true // 🎯 Inclure le besoin lié
+//       },
+//       orderBy: { createdAt: 'desc' }
+//     });
+
+//     return NextResponse.json({ donations });
+
+//   } catch (error) {
+//     console.error("GET donations by user type error:", error);
+//     return NextResponse.json({ error: "Server error" }, { status: 500 });
+//   }
+// }
 // app/api/donations/[id]/status/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -5,6 +480,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { emitSocketNotification } from "@/lib/emit-socket-notification";
+import { onDonReceived } from "@/lib/updateProjectNeeds";
 
 export const runtime = "nodejs";
 
@@ -63,10 +539,11 @@ export async function PATCH(
       where: { id: resolvedParams.id },
       include: {
         donateur: {
-          select: { id: true, fullName: true }
+          select: { id: true, fullName: true, avatar: true }
         },
         project: {
           select: {
+            id: true,
             auteurId: true,
             etablissementId: true,
             titre: true,
@@ -78,7 +555,8 @@ export async function PATCH(
                   select: { id: true }
                 }
               }
-            }
+            },
+            besoins: true // 🎯 Inclure les besoins pour la réponse
           }
         },
         beneficiaireEtab: {
@@ -95,7 +573,8 @@ export async function PATCH(
             id: true,
             fullName: true
           }
-        }
+        },
+        need: true // 🎯 Inclure le besoin lié
       }
     });
 
@@ -259,13 +738,16 @@ export async function PATCH(
       data: updateData,
       include: {
         donateur: {
-          select: { id: true, fullName: true }
+          select: { id: true, fullName: true, avatar: true }
         },
         project: {
           select: {
+            id: true,
             titre: true,
-            auteurId: true,
-            etablissement: { select: { nom: true } }
+            etablissement: { 
+              select: { nom: true } 
+            },
+            besoins: true // 🎯 Inclure les besoins mis à jour
           }
         },
         beneficiaireEtab: {
@@ -276,7 +758,8 @@ export async function PATCH(
         },
         beneficiairePersonnel: {
           select: { id: true, fullName: true }
-        }
+        },
+        need: true // 🎯 Inclure le besoin lié
       }
     });
 
@@ -284,6 +767,27 @@ export async function PATCH(
       donId: updatedDon.id,
       nouveauStatut: updatedDon.statut
     });
+
+    // 🎯🎯🎯 MISE À JOUR DES JAUGES DE PROGRESSION
+    let gaugesUpdated = false;
+    if (status === 'RECEPTIONNE') {
+      try {
+        console.log(`\n🔄 DÉCLENCHEMENT MISE À JOUR JAUGES pour le don ${resolvedParams.id}`);
+        console.log(`   Type: ${don.type}`);
+        console.log(`   Montant: ${don.montant || 'N/A'}`);
+        console.log(`   Quantité: ${don.quantite || 'N/A'}`);
+        console.log(`   Besoin lié: ${don.needId || 'Aucun'}`);
+        console.log(`   Projet lié: ${don.projectId || 'Aucun'}`);
+        
+        await onDonReceived(resolvedParams.id);
+        gaugesUpdated = true;
+        
+        console.log(`✅ Jauges mises à jour avec succès\n`);
+      } catch (gaugeError) {
+        console.error('❌ Erreur lors de la mise à jour des jauges:', gaugeError);
+        // On continue quand même, l'important est que le statut soit mis à jour
+      }
+    }
 
     // 🔔 NOTIFICATIONS SELON LE CHANGEMENT DE STATUT
     try {
@@ -307,11 +811,12 @@ export async function PATCH(
           const notification = await prisma.notification.create({
             data: {
               userId: recipientId,
-              type: 'DONATION_RECEIVED',
+              type: 'DONATION_RECEIVED', // ✅ Type existant dans votre enum
               title: 'Don en cours d\'acheminement',
               content: `Le don "${don.libelle}" a été envoyé et est en cours d'acheminement`,
               donId: don.id,
-              relatedUserId: don.donateurId
+              relatedUserId: don.donateurId,
+              projectId: don.projectId
             }
           });
           await emitSocketNotification(notification.id);
@@ -323,11 +828,12 @@ export async function PATCH(
         const notification = await prisma.notification.create({
           data: {
             userId: don.donateurId,
-            type: 'DONATION_RECEIVED',
+            type: 'DONATION_RECEIVED', // ✅ Type existant dans votre enum
             title: 'Don réceptionné',
             content: `Votre don "${don.libelle}" a été reçu avec succès. Merci pour votre générosité !`,
             donId: don.id,
-            relatedUserId: payload.userId
+            relatedUserId: payload.userId,
+            projectId: don.projectId
           }
         });
         await emitSocketNotification(notification.id);
@@ -338,9 +844,30 @@ export async function PATCH(
       // On continue même si la notification échoue
     }
 
+    // 📝 LOG D'ACTIVITÉ
+    try {
+      await prisma.donationActivityLog.create({
+        data: {
+          donationId: resolvedParams.id,
+          userId: payload.userId,
+          action: 'STATUS_UPDATED',
+          description: `Statut changé vers ${status}`,
+          metadata: {
+            oldStatus: don.statut,
+            newStatus: status,
+            updatedBy: payload.userId,
+            gaugesUpdated // 🎯 Indiquer si les jauges ont été mises à jour
+          }
+        }
+      });
+    } catch (logError) {
+      console.error('⚠️ Erreur log activité (non bloquant):', logError);
+    }
+
     return NextResponse.json({ 
       message: "Statut mis à jour avec succès",
-      donation: updatedDon
+      donation: updatedDon,
+      gaugesUpdated // 🎯 Informer le frontend que les jauges ont été mises à jour
     });
 
   } catch (error) {
@@ -399,7 +926,8 @@ export async function GET(
         project: {
           select: {
             titre: true,
-            etablissement: { select: { nom: true } }
+            etablissement: { select: { nom: true } },
+            besoins: true // 🎯 Inclure les besoins pour voir la progression
           }
         },
         beneficiaireEtab: {
@@ -407,7 +935,8 @@ export async function GET(
         },
         beneficiairePersonnel: {
           select: { fullName: true }
-        }
+        },
+        need: true // 🎯 Inclure le besoin lié
       },
       orderBy: { createdAt: 'desc' }
     });

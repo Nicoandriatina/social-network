@@ -31,6 +31,7 @@ const createDonationSchema = z.object({
   // Destination du don (un seul requis)
   projectId: z.string().optional(),
   etablissementId: z.string().optional(),
+  needId: z.string().optional(),
   personnelId: z.string().optional(),
 }).refine((data) => {
   // Au moins une destination doit être spécifiée
@@ -152,6 +153,7 @@ export async function POST(req: Request) {
         statut: 'EN_ATTENTE',
         donateurId: payload.userId,
         projectId: data.projectId || null,
+        needId: data.needId || null,
         etablissementId: data.etablissementId || null,
         personnelId: data.personnelId || null,
       },

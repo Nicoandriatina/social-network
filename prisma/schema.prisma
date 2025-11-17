@@ -138,6 +138,10 @@ model User {
   formations      Formation[]      @relation("EnseignantFormations")
   certifications  Certification[]  @relation("EnseignantCertifications")
 
+  isSuspended       Boolean   @default(false)
+  suspendedAt       DateTime?
+  suspensionReason  String?
+
   commentLikes CommentLike[] @relation("UserCommentLikes")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -195,13 +199,16 @@ model Project {
   dateDebut        DateTime?
   dateFin          DateTime?
   categorie        ProjectCategory
-  budgetEstime     Float?
+  budgetDisponible Float?
 
+  progressionGlobale Float       @default(0) 
   auteur           User           @relation("AuteurProjet", fields: [auteurId], references: [id])
   auteurId         String
 
   etablissement    Etablissement  @relation(fields: [etablissementId], references: [id])
   etablissementId  String
+
+  unpublishedReason String?
 
   dons             Don[]
   besoins          ProjectNeed[]
@@ -238,6 +245,8 @@ model ProjectNeed {
   montantRecu      Float       @default(0)
   quantiteRecue    Int         @default(0)
   pourcentage      Float       @default(0) // Calculé automatiquement
+  budgetInclusDansCalcul Boolean @default(false) // true si c'est le besoin monétaire principal
+  
   
   statut           NeedStatus  @default(EN_COURS)
   priorite         Int         @default(1) // 1 = haute, 2 = moyenne, 3 = basse
@@ -256,9 +265,11 @@ model ProjectNeed {
 
 model Don {
   id               String      @id @default(cuid())
+  reference        String      @unique @default(cuid())
   libelle          String
   type             DonType
   quantite         Int?
+  unite            String?   
   photos           String[]
   statut           DonStatus   @default(EN_ATTENTE)
   dateEnvoi        DateTime?

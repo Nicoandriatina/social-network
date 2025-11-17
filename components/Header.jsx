@@ -545,14 +545,7 @@ const HeaderWithDropdown = ({ user, userType = "etablissement", avatar = null })
     if (type === "DONATEUR") {
       return [
         ...baseItems,
-        {
-          icon: FolderKanban,
-          label: "Projets",
-          href: "/projects",
-          badge: 0,
-          color: "text-orange-600",
-          shortcut: "⌘P"
-        },
+        
         {
           icon: Gift,
           label: "Mes Donations",
@@ -583,14 +576,14 @@ const HeaderWithDropdown = ({ user, userType = "etablissement", avatar = null })
     } else if (type === "ENSEIGNANT") {
       return [
         ...baseItems,
-        {
-          icon: FolderKanban,
-          label: "Projets",
-          href: "/projects",
-          badge: 0,
-          color: "text-orange-600",
-          shortcut: "⌘P"
-        },
+        // {
+        //   icon: FolderKanban,
+        //   label: "Projets",
+        //   href: "/projects",
+        //   badge: 0,
+        //   color: "text-orange-600",
+        //   shortcut: "⌘P"
+        // },
         {
           icon: Inbox,
           label: "Dons reçus",
@@ -602,14 +595,14 @@ const HeaderWithDropdown = ({ user, userType = "etablissement", avatar = null })
     } else {
       return [
         ...baseItems,
-        {
-          icon: FolderKanban,
-          label: "Projets",
-          href: "/projects",
-          badge: 0,
-          color: "text-orange-600",
-          shortcut: "⌘P"
-        }
+        // {
+        //   icon: FolderKanban,
+        //   label: "Projets",
+        //   href: "/projects",
+        //   badge: 0,
+        //   color: "text-orange-600",
+        //   shortcut: "⌘P"
+        // }
       ];
     }
   };

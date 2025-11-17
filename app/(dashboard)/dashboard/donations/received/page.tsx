@@ -27,6 +27,8 @@ import DonationDetailModal from "@/components/donations/DonationDetailModal";
 import DonationActivityHistory from "@/components/donations/DonationActivityHistory";
 import ConfirmReceptionModal from "@/components/donations/ConfirmReceptionModal";
 import { AvatarDisplay } from "@/components/AvatarDisplay";
+import DonationProjectGauges from "@/components/donations/DonationProjectGauges"; // ⭐ LIGNE 1 À AJOUTER
+
 
 export default function EnhancedDonationsReceivedPage() {
   const router = useRouter();
@@ -656,7 +658,12 @@ export default function EnhancedDonationsReceivedPage() {
                           )}
                         </div>
                       </div>
-
+                          {donation.projectId && (
+                            <DonationProjectGauges 
+                              donation={donation}
+                              onRefresh={loadDonations}
+                            />
+                          )}
                       {/* Photos */}
                       {donation.photos && donation.photos.length > 0 && (
                         <div className="mt-4">

@@ -341,7 +341,7 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
       
       setTimeout(() => {
         router.push(`/projects/${projectId}`);
-      }, 2000);
+      }, 200);
 
     } catch (error: any) {
       console.error('Erreur:', error);
