@@ -8,19 +8,11 @@ export async function PATCH(
 ) {
   try {
     const auth = await getAuthUser();
-    
-    console.log("========== DEBUG VALIDATE TEACHER ==========");
-    console.log("1️⃣ Auth user:", JSON.stringify(auth, null, 2));
-    
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: etabId, teacherId } = await params;
-    
-    console.log("2️⃣ Etab ID:", etabId);
-    console.log("3️⃣ Teacher ID:", teacherId);
-    console.log("4️⃣ Auth type:", auth.type);
 
     // ✅ Vérifier que l'utilisateur est un ETABLISSEMENT
     if (auth.type !== "ETABLISSEMENT") {
@@ -46,10 +38,6 @@ export async function PATCH(
       where: { id: teacherId },
       include: { user: true },
     });
-
-    console.log("6️⃣ Enseignant trouvé:", !!enseignant);
-    console.log("7️⃣ Enseignant etablissementId:", enseignant?.user.etablissementId);
-
     if (!enseignant) {
       return NextResponse.json({ error: "Enseignant non trouvé" }, { status: 404 });
     }
@@ -65,7 +53,7 @@ export async function PATCH(
       data: { validated: true },
     });
 
-    console.log("✅ Enseignant validé avec succès");
+    console.log("Enseignant validé avec succès");
 
     // Créer une notification
     const admin = await prisma.user.findUnique({
@@ -83,8 +71,7 @@ export async function PATCH(
       },
     });
 
-    console.log("✅ Notification créée");
-    console.log("===============================================");
+    console.log(" Notification créée");
 
     return NextResponse.json({ enseignant: updated });
   } catch (e) {

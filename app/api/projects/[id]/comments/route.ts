@@ -1,8 +1,3 @@
-// ==========================================
-// SOLUTION TEMPORAIRE - VERSION SANS LIKES DE COMMENTAIRES
-// app/api/projects/[id]/comments/route.ts
-// ==========================================
-
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";

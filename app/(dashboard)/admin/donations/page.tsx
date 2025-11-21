@@ -127,6 +127,16 @@ export default function AdminDonationsPage() {
     }).format(amount);
   };
 
+  // Fonction pour obtenir le label d'affichage
+  const getTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'MONETAIRE': 'MONÉTAIRE',
+      'VIVRES': 'ALIMENTAIRE',
+      'NON_VIVRES': 'MATÉRIEL'
+    };
+    return labels[type] || type;
+  };
+
   const getTypeBadge = (type: string) => {
     const config = {
       MONETAIRE: { color: 'bg-green-100 text-green-700', icon: DollarSign },
@@ -138,7 +148,7 @@ export default function AdminDonationsPage() {
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${color}`}>
         <Icon className="w-3 h-3" />
-        {type}
+        {getTypeLabel(type)}
       </span>
     );
   };
@@ -221,7 +231,7 @@ export default function AdminDonationsPage() {
             {stats.byType.map((stat: any) => (
               <StatCard
                 key={stat.type}
-                title={stat.type}
+                title={getTypeLabel(stat.type)}
                 value={stat.count}
                 subtitle={stat.type === 'MONETAIRE' ? formatAmount(stats.totalMonetary || 0) : null}
                 icon={
@@ -340,7 +350,7 @@ export default function AdminDonationsPage() {
                 >
                   <option value="">Tous les types</option>
                   <option value="MONETAIRE">Monétaire</option>
-                  <option value="VIVRES">Vivres</option>
+                  <option value="VIVRES">Alimentaire</option>
                   <option value="NON_VIVRES">Matériel</option>
                 </select>
 

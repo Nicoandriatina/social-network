@@ -64,6 +64,16 @@ export default function AdminAnalyticsPage() {
     }).format(amount);
   };
 
+  // Fonction pour formater les labels de types de dons
+  const formatDonationType = (type: string) => {
+    const labels: Record<string, string> = {
+      'MONETAIRE': 'MONÉTAIRE',
+      'VIVRES': 'ALIMENTAIRE',
+      'NON_VIVRES': 'MATÉRIEL'
+    };
+    return labels[type] || type;
+  };
+
   const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
 
   if (loading) {
@@ -270,7 +280,7 @@ export default function AdminAnalyticsPage() {
                     <div key={type.type} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                        <span className="text-sm text-slate-700">{type.type}</span>
+                        <span className="text-sm text-slate-700">{formatDonationType(type.type)}</span>
                       </div>
                       <span className="text-sm font-medium text-slate-800">{type.count}</span>
                     </div>
@@ -417,10 +427,10 @@ export default function AdminAnalyticsPage() {
                     <p className="text-sm text-slate-600">{project.schoolName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-green-600">
-                      {formatAmount(project.totalAmount)}
+                    <p className="text-2xl font-bold text-indigo-600">
+                      {project.donationsCount}
                     </p>
-                    <p className="text-xs text-slate-500">{project.donationsCount} dons</p>
+                    <p className="text-xs text-slate-500">dons reçus</p>
                   </div>
                 </div>
               ))}

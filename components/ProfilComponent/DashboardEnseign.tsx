@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Upload, 
   Briefcase, 
@@ -28,7 +27,14 @@ import {
   BarChart3,
   Eye,
   Edit3,
-  Sparkles
+  Sparkles,
+  Building2,
+  DollarSign,
+  Package,
+  ShoppingCart,
+  ArrowRight,
+  Quote,
+  RefreshCw
 } from "lucide-react";
 import { useTeacherProfile } from "@/lib/hooks/useTeacherProfile";
 import { AvatarDisplay } from "@/components/AvatarDisplay";
@@ -50,6 +56,79 @@ type EnseignantDashboardProps = {
       donsRecus: number;
     };
   };
+};
+
+// Composant pour les jauges de progression des projets
+const CompactProjectGauges = ({ project }) => {
+  if (!project.besoins || project.besoins.length === 0) return null;
+
+  const getProgressColor = (percentage) => {
+    if (percentage >= 75) return 'bg-green-500';
+    if (percentage >= 50) return 'bg-blue-500';
+    if (percentage >= 25) return 'bg-yellow-500';
+    return 'bg-orange-500';
+  };
+
+  const getNeedIcon = (type) => {
+    switch (type) {
+      case 'MONETAIRE': return DollarSign;
+      case 'MATERIEL': return Package;
+      case 'VIVRES': return ShoppingCart;
+      default: return Target;
+    }
+  };
+
+  const completedNeeds = project.besoins.filter(b => b.pourcentage >= 100).length;
+  const avgProgress = project.progressionGlobale || 
+    (project.besoins.reduce((sum, n) => sum + (n.pourcentage || 0), 0) / project.besoins.length);
+
+  return (
+    <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-blue-600" />
+          <span className="text-xs font-semibold text-blue-900">
+            {completedNeeds}/{project.besoins.length} besoins complétés
+          </span>
+        </div>
+        <span className="text-sm font-bold text-blue-600">{avgProgress.toFixed(0)}%</span>
+      </div>
+
+      <div className="h-2 bg-white rounded-full overflow-hidden border border-blue-200 mb-2">
+        <div
+          className={`h-full ${getProgressColor(avgProgress)} transition-all duration-500`}
+          style={{ width: `${Math.min(avgProgress, 100)}%` }}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        {project.besoins.slice(0, 2).map((need) => {
+          const Icon = getNeedIcon(need.type);
+          return (
+            <div key={need.id} className="flex-1 bg-white rounded-lg p-2 border border-blue-200">
+              <div className="flex items-center gap-1 mb-1">
+                <Icon className="w-3 h-3 text-slate-600" />
+                <span className="text-xs text-slate-700 truncate flex-1">{need.titre}</span>
+                <span className="text-xs font-bold text-blue-600">{need.pourcentage?.toFixed(0)}%</span>
+              </div>
+              <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${getProgressColor(need.pourcentage || 0)}`}
+                  style={{ width: `${Math.min(need.pourcentage || 0, 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {project.besoins.length > 2 && (
+        <div className="text-xs text-center text-slate-500 mt-2">
+          +{project.besoins.length - 2} autres besoins
+        </div>
+      )}
+    </div>
+  );
 };
 
 // ============================================
@@ -232,6 +311,18 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
   const [cvAnalysis, setCvAnalysis] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   
+  // États pour les dons reçus
+  const [receivedDonations, setReceivedDonations] = useState([]);
+  const [loadingDonations, setLoadingDonations] = useState(false);
+  const [donationStats, setDonationStats] = useState({
+    total: 0,
+    totalMonetaire: 0,
+    enAttente: 0,
+    envoyes: 0,
+    recus: 0,
+    donateursUniques: 0
+  });
+  
   // Formulaires
   const [showNewExpForm, setShowNewExpForm] = useState(false);
   const [showNewFormForm, setShowNewFormForm] = useState(false);
@@ -287,8 +378,138 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
   // Vérifier si le profil est vide
   const isProfileEmpty = experiences.length === 0 && formations.length === 0 && certifications.length === 0;
 
+  // Charger les dons reçus
+  const loadReceivedDonations = async () => {
+    try {
+      setLoadingDonations(true);
+      const response = await fetch('/api/donations/received');
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement des dons');
+      }
+      
+      const data = await response.json();
+      const donationsList = data.donations || [];
+      
+      // Enrichir les donations avec les détails des projets
+      const enrichedDonations = await Promise.all(
+        donationsList.map(async (donation) => {
+          if (donation.projectId) {
+            try {
+              const projectResponse = await fetch(`/api/projects/${donation.projectId}`);
+              if (projectResponse.ok) {
+                const projectData = await projectResponse.json();
+                return {
+                  ...donation,
+                  project: {
+                    ...donation.project,
+                    besoins: projectData.project.besoins || [],
+                    progressionGlobale: projectData.project.progressionGlobale || 0
+                  }
+                };
+              }
+            } catch (error) {
+              console.error('Erreur chargement projet:', error);
+            }
+          }
+          return donation;
+        })
+      );
+      
+      setReceivedDonations(enrichedDonations);
+      
+      // Calculer les statistiques
+      const totalDons = enrichedDonations.length;
+      const totalMonetaire = enrichedDonations
+        .filter(d => d.type === 'MONETAIRE' && d.montant)
+        .reduce((sum, d) => sum + (d.montant || 0), 0);
+      const enAttente = enrichedDonations.filter(d => d.statut === 'EN_ATTENTE').length;
+      const envoyes = enrichedDonations.filter(d => d.statut === 'ENVOYE').length;
+      const recus = enrichedDonations.filter(d => d.statut === 'RECEPTIONNE').length;
+      const donateursUniques = new Set(enrichedDonations.map(d => d.donateur.id)).size;
+      
+      setDonationStats({
+        total: totalDons,
+        totalMonetaire,
+        enAttente,
+        envoyes,
+        recus,
+        donateursUniques
+      });
+    } catch (error) {
+      console.error('Erreur chargement dons:', error);
+      setReceivedDonations([]);
+    } finally {
+      setLoadingDonations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeView === 'dons') {
+      loadReceivedDonations();
+    }
+  }, [activeView]);
+
+  const formatAmount = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`;
+    }
+    if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K`;
+    }
+    return new Intl.NumberFormat('fr-MG', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatFullAmount = (amount: number) => {
+    return new Intl.NumberFormat('fr-MG', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusInfo = (statut: string) => {
+    const statusMap = {
+      'EN_ATTENTE': { 
+        label: 'En attente', 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: Clock 
+      },
+      'ENVOYE': { 
+        label: 'Envoyé', 
+        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: Package 
+      },
+      'RECEPTIONNE': { 
+        label: 'Reçu', 
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: CheckCircle 
+      }
+    };
+    return statusMap[statut] || statusMap['EN_ATTENTE'];
+  };
+
+  const getTypeInfo = (type: string) => {
+    const typeMap = {
+      'MONETAIRE': { label: 'Monétaire', color: 'text-green-600', icon: DollarSign },
+      'VIVRES': { label: 'Vivres', color: 'text-orange-600', icon: ShoppingCart },
+      'NON_VIVRES': { label: 'Matériel', color: 'text-blue-600', icon: Package }
+    };
+    return typeMap[type] || { label: type, color: 'text-gray-600', icon: Package };
+  };
+
   // ============================================
-  // HANDLERS
+  // HANDLERS (reste identique à votre code)
   // ============================================
 
   const handleAddExperience = async () => {
@@ -539,279 +760,308 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6">
         
-        {/* LEFT SIDEBAR */}
-        <aside className="hidden lg:flex flex-col gap-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex justify-center mb-3">
-              <AvatarDisplay
-                name={user.fullName || "Enseignant"}
-                avatar={user.avatar}
-                size="lg"
-                showBorder={true}
-              />
-            </div>
-            
-            <div className="text-center mt-3">
-              <h3 className="font-semibold text-slate-800">
-                {user.fullName || "Enseignant(e)"}
-              </h3>
-              <p className="text-sm text-slate-500">
-                {user.profession || "Personnel éducatif"}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                {user.etablissement
-                  ? `${user.etablissement.nom}${user.etablissement.type ? " • " + user.etablissement.type : ""}`
-                  : "Établissement non renseigné"}
-              </p>
-
-              <div
-                className={`inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full text-xs font-medium ${
-                  user.isValidated
-                    ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                    : "bg-amber-50 text-amber-600 border border-amber-200"
-                }`}
-              >
-                {user.isValidated ? (
-                  <>
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Validé
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-3.5 h-3.5" />
-                    En attente
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 mt-5">
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-3 text-center">
-                <div className="text-base font-semibold text-indigo-600">
-                  {experiences.length}
+        {/* LEFT SIDEBAR - Scrollable */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 pr-2">
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-center mb-3">
+                  <AvatarDisplay
+                    name={user.fullName || "Enseignant"}
+                    avatar={user.avatar}
+                    size="lg"
+                    showBorder={true}
+                  />
                 </div>
-                <div className="text-xs text-slate-600">Exp.</div>
-              </div>
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3 text-center">
-                <div className="text-base font-semibold text-emerald-600">
-                  {formations.length}
-                </div>
-                <div className="text-xs text-slate-600">Form.</div>
-              </div>
-              <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-3 text-center">
-                <div className="text-base font-semibold text-amber-600">
-                  {certifications.length}
-                </div>
-                <div className="text-xs text-slate-600">Cert.</div>
-              </div>
-            </div>
+                
+                <div className="text-center mt-3">
+                  <h3 className="font-semibold text-slate-800">
+                    {user.fullName || "Enseignant(e)"}
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    {user.profession || "Personnel éducatif"}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {user.etablissement
+                      ? `${user.etablissement.nom}${user.etablissement.type ? " • " + user.etablissement.type : ""}`
+                      : "Établissement non renseigné"}
+                  </p>
 
-            <button
-              onClick={() => setShowUploadCV(true)}
-              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 text-sm font-medium"
-            >
-              <Upload className="w-4 h-4" />
-              Importer mon CV
-            </button>
+                  <div
+                    className={`inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full text-xs font-medium ${
+                      user.isValidated
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                        : "bg-amber-50 text-amber-600 border border-amber-200"
+                    }`}
+                  >
+                    {user.isValidated ? (
+                      <>
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Validé
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-3.5 h-3.5" />
+                        En attente
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mt-5">
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-3 text-center">
+                    <div className="text-base font-semibold text-indigo-600">
+                      {experiences.length}
+                    </div>
+                    <div className="text-xs text-slate-600">Exp.</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3 text-center">
+                    <div className="text-base font-semibold text-emerald-600">
+                      {formations.length}
+                    </div>
+                    <div className="text-xs text-slate-600">Form.</div>
+                  </div>
+                  <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-3 text-center">
+                    <div className="text-base font-semibold text-amber-600">
+                      {certifications.length}
+                    </div>
+                    <div className="text-xs text-slate-600">Cert.</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowUploadCV(true)}
+                  className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 text-sm font-medium"
+                >
+                  <Upload className="w-4 h-4" />
+                  Importer mon CV
+                </button>
+              </div>
+
+              <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+                <ul className="space-y-1 text-sm">
+                  <li>
+                    <button 
+                      onClick={() => setActiveView("parcours")}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                        activeView === "parcours" 
+                          ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span className="font-medium">Mon Parcours</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setActiveView("dons")}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                        activeView === "dons" 
+                          ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <Gift className="w-4 h-4" />
+                      <span className="font-medium">Dons reçus</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button 
+                      onClick={() => setActiveView("activite")}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                        activeView === "activite" 
+                          ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
+                          : "text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                      <span className="font-medium">Projets participés</span>
+                    </button>
+                  </li>
+                  <li>
+                    <Link href="/dashboard/messages">
+                      <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200">
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="font-medium">Messages</span>
+                      </button>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/dashboard/edit">
+                      <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200">
+                        <Settings className="w-4 h-4" />
+                        <span className="font-medium">Paramètres</span>
+                      </button>
+                    </Link>
+                  </li>
+                </ul>
+              </nav>
+            </div>
           </div>
+        </aside>
 
-          <nav className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
-            <ul className="space-y-1 text-sm">
-              <li>
+        {/* MAIN FEED - Scrollable */}
+        <main className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
+            {/* Header / Tabs */}
+            <div className="p-6 border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-purple-50 sticky top-0 z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">
+                    {activeView === "parcours" && "Mon Parcours"}
+                    {activeView === "dons" && "Dons Reçus"}
+                    {activeView === "activite" && "Activité"}
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    {activeView === "parcours" && "Valorisez votre parcours professionnel"}
+                    {activeView === "dons" && "Suivez les dons que vous avez reçus"}
+                    {activeView === "activite" && "Consultez votre activité récente"}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (activeView === 'dons') loadReceivedDonations();
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm hover:bg-white/50 transition-colors"
+                  disabled={loadingDonations}
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingDonations ? 'animate-spin' : ''}`} />
+                  Actualiser
+                </button>
+              </div>
+
+              <div className="flex gap-2">
                 <button 
                   onClick={() => setActiveView("parcours")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
                     activeView === "parcours" 
-                      ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
-                      : "text-slate-600 hover:bg-slate-50"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
+                      : "hover:bg-white/50"
                   }`}
                 >
                   <User className="w-4 h-4" />
-                  <span className="font-medium">Mon Parcours</span>
+                  Parcours
                 </button>
-              </li>
-              <li>
                 <button 
                   onClick={() => setActiveView("dons")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
                     activeView === "dons" 
-                      ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
-                      : "text-slate-600 hover:bg-slate-50"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
+                      : "hover:bg-white/50"
                   }`}
                 >
                   <Gift className="w-4 h-4" />
-                  <span className="font-medium">Dons reçus</span>
+                  Dons
                 </button>
-              </li>
-              <li>
                 <button 
                   onClick={() => setActiveView("activite")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
                     activeView === "activite" 
-                      ? "bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm" 
-                      : "text-slate-600 hover:bg-slate-50"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
+                      : "hover:bg-white/50"
                   }`}
                 >
                   <TrendingUp className="w-4 h-4" />
-                  <span className="font-medium">Projets participés</span>
+                  Activité
                 </button>
-              </li>
-              <li>
-                <Link href="/dashboard/messages">
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200">
-                    <MessageSquare className="w-4 h-4" />
-                    <span className="font-medium">Messages</span>
-                  </button>
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard/edit">
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200">
-                    <Settings className="w-4 h-4" />
-                    <span className="font-medium">Paramètres</span>
-                  </button>
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-
-        {/* MAIN FEED */}
-        <main className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-200 bg-gradient-to-br from-indigo-50 to-purple-50">
-            <h2 className="text-xl font-bold text-slate-800">Tableau de bord</h2>
-            <p className="text-sm text-slate-600">
-              Valorisez votre parcours et suivez vos interactions
-            </p>
-
-            <div className="flex gap-2 mt-4">
-              <button 
-                onClick={() => setActiveView("parcours")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
-                  activeView === "parcours" 
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
-                    : "hover:bg-white/50"
-                }`}
-              >
-                <User className="w-4 h-4" />
-                Parcours
-              </button>
-              <button 
-                onClick={() => setActiveView("dons")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
-                  activeView === "dons" 
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
-                    : "hover:bg-white/50"
-                }`}
-              >
-                <Gift className="w-4 h-4" />
-                Dons
-              </button>
-              <button 
-                onClick={() => setActiveView("activite")}
-                className={`flex items-center gap-2 px-4 py-2 text-sm rounded-xl transition-all duration-200 ${
-                  activeView === "activite" 
-                    ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md" 
-                    : "hover:bg-white/50"
-                }`}
-              >
-                <TrendingUp className="w-4 h-4" />
-                Activité
-              </button>
+              </div>
             </div>
-          </div>
 
-          <div className="p-6 space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto">
-            
-            {/* Vue Parcours */}
-            {activeView === "parcours" && (
-              <div className="space-y-6">
-                
-                {/* Message d'accueil pour profil vide */}
-                {isProfileEmpty && !loading && (
-                  <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200 rounded-2xl p-8">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <Sparkles className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">
-                          Valorisez votre parcours professionnel !
-                        </h3>
-                        <p className="text-sm text-slate-600 mb-4 leading-relaxed">
-                          Bienvenue ! Enrichissez votre profil pour augmenter vos chances de recevoir des dons et des opportunités. 
-                          Vous avez deux options :
-                        </p>
-                        
-                        <div className="grid md:grid-cols-2 gap-4 mb-4">
-                          <div className="bg-white rounded-xl p-4 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                <Upload className="w-5 h-5 text-indigo-600" />
-                              </div>
-                              <h4 className="font-semibold text-slate-800">Option 1 : Import CV</h4>
-                            </div>
-                            <p className="text-xs text-slate-600 mb-3">
-                              Notre IA analyse automatiquement votre CV et extrait vos expériences, formations et certifications.
-                            </p>
-                            <button
-                              onClick={() => setShowUploadCV(true)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
-                            >
-                              <Upload className="w-4 h-4" />
-                              Importer mon CV
-                            </button>
-                          </div>
-
-                          <div className="bg-white rounded-xl p-4 border-2 border-emerald-200 hover:border-emerald-400 transition-all">
-                            <div className="flex items-center gap-3 mb-3">
-                              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                <Edit3 className="w-5 h-5 text-emerald-600" />
-                              </div>
-                              <h4 className="font-semibold text-slate-800">Option 2 : Ajout manuel</h4>
-                            </div>
-                            <p className="text-xs text-slate-600 mb-3">
-                              Ajoutez manuellement vos expériences, formations et certifications une par une.
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setShowNewExpForm(true)}
-                                className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-all text-xs font-medium"
-                                title="Ajouter une expérience"
-                              >
-                                <Plus className="w-4 h-4 mx-auto" />
-                              </button>
-                              <button
-                                onClick={() => setShowNewFormForm(true)}
-                                className="flex-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all text-xs font-medium"
-                                title="Ajouter une formation"
-                              >
-                                <Plus className="w-4 h-4 mx-auto" />
-                              </button>
-                              <button
-                                onClick={() => setShowNewCertForm(true)}
-                                className="flex-1 px-3 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-all text-xs font-medium"
-                                title="Ajouter une certification"
-                              >
-                                <Plus className="w-4 h-4 mx-auto" />
-                              </button>
-                            </div>
-                          </div>
+            {/* Content */}
+            <div className="p-6">
+              
+              {/* Vue Parcours - Contenu identique à votre code original */}
+              {activeView === "parcours" && (
+                <div className="space-y-6">
+                  {/* Message d'accueil pour profil vide */}
+                  {isProfileEmpty && !loading && (
+                    <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200 rounded-2xl p-8">
+                      <div className="flex items-start gap-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <Sparkles className="w-8 h-8 text-white" />
                         </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
-                          <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-blue-800">
-                            <strong>Astuce :</strong> Un profil complet augmente vos chances de recevoir des dons de 60% ! 
-                            Les donateurs cherchent des enseignants avec un parcours bien documenté.
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold text-slate-800 mb-2">
+                            Valorisez votre parcours professionnel !
+                          </h3>
+                          <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                            Bienvenue ! Enrichissez votre profil pour augmenter vos chances de recevoir des dons et des opportunités. 
+                            Vous avez deux options :
                           </p>
+                          
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-white rounded-xl p-4 border-2 border-indigo-200 hover:border-indigo-400 transition-all">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                  <Upload className="w-5 h-5 text-indigo-600" />
+                                </div>
+                                <h4 className="font-semibold text-slate-800">Option 1 : Import CV</h4>
+                              </div>
+                              <p className="text-xs text-slate-600 mb-3">
+                                Notre IA analyse automatiquement votre CV et extrait vos expériences, formations et certifications.
+                              </p>
+                              <button
+                                onClick={() => setShowUploadCV(true)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
+                              >
+                                <Upload className="w-4 h-4" />
+                                Importer mon CV
+                              </button>
+                            </div>
+
+                            <div className="bg-white rounded-xl p-4 border-2 border-emerald-200 hover:border-emerald-400 transition-all">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                  <Edit3 className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <h4 className="font-semibold text-slate-800">Option 2 : Ajout manuel</h4>
+                              </div>
+                              <p className="text-xs text-slate-600 mb-3">
+                                Ajoutez manuellement vos expériences, formations et certifications une par une.
+                              </p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setShowNewExpForm(true)}
+                                  className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-all text-xs font-medium"
+                                  title="Ajouter une expérience"
+                                >
+                                  <Plus className="w-4 h-4 mx-auto" />
+                                </button>
+                                <button
+                                  onClick={() => setShowNewFormForm(true)}
+                                  className="flex-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all text-xs font-medium"
+                                  title="Ajouter une formation"
+                                >
+                                  <Plus className="w-4 h-4 mx-auto" />
+                                </button>
+                                <button
+                                  onClick={() => setShowNewCertForm(true)}
+                                  className="flex-1 px-3 py-2 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition-all text-xs font-medium"
+                                  title="Ajouter une certification"
+                                >
+                                  <Plus className="w-4 h-4 mx-auto" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-3">
+                            <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-blue-800">
+                              <strong>Astuce :</strong> Un profil complet augmente vos chances de recevoir des dons de 60% ! 
+                              Les donateurs cherchent des enseignants avec un parcours bien documenté.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Section Expériences */}
+                  {/* Le reste du contenu "Parcours" reste identique à votre code original */}
+                  {/* Je ne répète pas tout le code des expériences, formations, certifications pour gagner de l'espace */}
+
+               {/* Section Expériences */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-semibold text-slate-800 flex items-center gap-2">
@@ -1177,171 +1427,408 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
               </div>
             )}
 
-            {/* Vue Dons reçus */}
-            {activeView === "dons" && (
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-slate-800">Dons reçus</h3>
-                    <p className="text-sm text-slate-600">Historique de vos dons</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-4 border border-green-200">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="font-medium text-slate-800">Don de 2 laptops</span>
+              {/* Vue Dons reçus */}
+              {activeView === "dons" && (
+                <div className="space-y-6">
+                  {loadingDonations ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                      <p className="text-slate-600">Chargement des dons...</p>
+                    </div>
+                  ) : receivedDonations.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Gift className="w-10 h-10 text-indigo-600" />
                       </div>
-                      <p className="text-sm text-slate-600">Statut: Réceptionné</p>
-                      <p className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        12/06/2025
+                      <h3 className="text-xl font-semibold text-slate-700 mb-2">Aucun don reçu</h3>
+                      <p className="text-slate-500 mb-6">
+                        Les dons que vous recevrez apparaîtront ici
                       </p>
                     </div>
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors">
-                      <Eye className="w-3.5 h-3.5" />
-                      Détails
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Vue Activité */}
-            {activeView === "activite" && (
-              <div className="space-y-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
-                      <Award className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-800">Reconnaissances</h3>
-                      <p className="text-sm text-slate-600">Vos contributions</p>
-                    </div>
-                  </div>
-                  <ul className="space-y-3">
-                    <li className="bg-white rounded-xl p-4 border border-purple-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Award className="w-4 h-4 text-purple-600" />
+                  ) : (
+                    <>
+                      {/* Statistiques rapides */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+                              <Package className="w-6 h-6 text-slate-600" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold text-slate-800">{donationStats.total}</div>
+                              <div className="text-sm text-slate-500">Total des dons</div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-800">Attestation de contribution</p>
-                          <p className="text-xs text-slate-500 mt-1">15 mars 2025</p>
+
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <DollarSign className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-lg font-bold text-green-600 truncate" title={`${formatFullAmount(donationStats.totalMonetaire)} Ar`}>
+                                {formatAmount(donationStats.totalMonetaire)} Ar
+                              </div>
+                              <div className="text-sm text-slate-500">Total reçu</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                              <User className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold text-blue-600">{donationStats.donateursUniques}</div>
+                              <div className="text-sm text-slate-500">Donateurs</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-green-100 rounded-xl flex items-center justify-center">
+                              <CheckCircle className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold text-emerald-600">{donationStats.recus}</div>
+                              <div className="text-sm text-slate-500">Réceptionnés</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </li>
-                  </ul>
-                </div>
 
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-800">Projets participés</h3>
-                      <p className="text-sm text-slate-600">{stats.projetsParticipe} projets</p>
+                      {/* Liste des dons */}
+                      <div className="space-y-4">
+                        {receivedDonations.map((donation) => {
+                          const statusInfo = getStatusInfo(donation.statut);
+                          const typeInfo = getTypeInfo(donation.type);
+                          const StatusIcon = statusInfo.icon;
+                          const TypeIcon = typeInfo.icon;
+
+                          return (
+                            <div key={donation.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-6 border border-slate-200">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-start gap-4 flex-1">
+                                  {/* Avatar du donateur */}
+                                  <AvatarDisplay
+                                    name={donation.donateur.fullName}
+                                    avatar={donation.donateur.avatar}
+                                    size="md"
+                                    showBorder={false}
+                                  />
+                                  
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                      <h3 className="font-semibold text-slate-800">{donation.libelle}</h3>
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusInfo.color}`}>
+                                        <StatusIcon className="w-3 h-3 inline mr-1" />
+                                        {statusInfo.label}
+                                      </span>
+                                      {donation.raison && (
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
+                                          <MessageSquare className="w-3 h-3" />
+                                          Message
+                                        </span>
+                                      )}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4 text-sm text-slate-600 mb-2 flex-wrap">
+                                      <span className="flex items-center gap-1">
+                                        <User className="w-4 h-4" />
+                                        {donation.donateur.fullName}
+                                      </span>
+                                      
+                                      <span className={`flex items-center gap-1 ${typeInfo.color}`}>
+                                        <TypeIcon className="w-4 h-4" />
+                                        {typeInfo.label}
+                                        {donation.type === 'MONETAIRE' && donation.montant && (
+                                          <span className="font-semibold ml-1">
+                                            {formatFullAmount(donation.montant)} Ar
+                                          </span>
+                                        )}
+                                        {donation.quantite && (
+                                          <span className="font-semibold ml-1">
+                                            {donation.quantite} unités
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1 text-sm text-slate-500">
+                                      <Calendar className="w-4 h-4" />
+                                      Reçu le {formatDate(donation.createdAt)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Message du donateur */}
+                              {donation.raison && (
+                                <div className="mb-4 bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 rounded-xl p-4 border-2 border-purple-200 shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                                      <Quote className="w-4 h-4 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <h4 className="text-sm font-semibold text-purple-900 mb-2">
+                                        Message du donateur
+                                      </h4>
+                                      <p className="text-sm text-purple-800 leading-relaxed italic font-medium">
+                                        "{donation.raison}"
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Jauges de progression si projet */}
+                              {donation.project && donation.project.besoins && (
+                                <CompactProjectGauges project={donation.project} />
+                              )}
+
+                              {/* Lien vers plus de détails */}
+                              <div className="mt-4 pt-4 border-t border-slate-200">
+                                <Link
+                                  href="/dashboard/donations/received"
+                                  className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  Voir plus de détails
+                                  <ArrowRight className="w-4 h-4" />
+                                </Link>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
+
+                      {/* Lien vers la page complète */}
+                      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-2xl p-6 text-center">
+                        <h4 className="font-semibold text-slate-800 mb-2">Voir tous les détails</h4>
+                        <p className="text-sm text-slate-600 mb-4">
+                          Accédez à la vue complète avec filtres et historique détaillé
+                        </p>
+                        <Link href="/dashboard/donations/received">
+                          <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium">
+                            <Eye className="w-5 h-5" />
+                            Page complète des dons
+                            <ArrowRight className="w-5 h-5" />
+                          </button>
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Vue Activité */}
+              {activeView === "activite" && (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                        <Award className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-800">Reconnaissances</h3>
+                        <p className="text-sm text-slate-600">Vos contributions</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
+                      <li className="bg-white rounded-xl p-4 border border-purple-200">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Award className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-slate-800">Attestation de contribution</p>
+                            <p className="text-xs text-slate-500 mt-1">15 mars 2025</p>
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
-                      <div className="text-2xl font-bold text-indigo-600">{stats.projetsParticipe}</div>
-                      <div className="text-xs text-slate-600 mt-1">Total</div>
+
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <Target className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-slate-800">Projets participés</h3>
+                        <p className="text-sm text-slate-600">{stats.projetsParticipe} projets</p>
+                      </div>
                     </div>
-                    <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
-                      <div className="text-2xl font-bold text-green-600">3</div>
-                      <div className="text-xs text-slate-600 mt-1">Actifs</div>
-                    </div>
-                    <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
-                      <div className="text-2xl font-bold text-slate-400">2</div>
-                      <div className="text-xs text-slate-600 mt-1">Terminés</div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
+                        <div className="text-2xl font-bold text-indigo-600">{stats.projetsParticipe}</div>
+                        <div className="text-xs text-slate-600 mt-1">Total</div>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
+                        <div className="text-2xl font-bold text-green-600">3</div>
+                        <div className="text-xs text-slate-600 mt-1">Actifs</div>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 text-center border border-indigo-200">
+                        <div className="text-2xl font-bold text-slate-400">2</div>
+                        <div className="text-xs text-slate-600 mt-1">Terminés</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </main>
 
-        {/* RIGHT SIDEBAR */}
-        <aside className="hidden lg:flex flex-col gap-6">
-          <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="w-5 h-5" />
-              <h3 className="font-semibold">Statistiques du mois</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                <div className="text-xl font-bold">3</div>
-                <div className="text-xs opacity-90">Projets</div>
+        {/* RIGHT SIDEBAR - Scrollable */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 pr-2">
+            <div className="space-y-6">
+              <div className="rounded-2xl p-6 text-white bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart3 className="w-5 h-5" />
+                  <h3 className="font-semibold">Statistiques du mois</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                    <div className="text-xl font-bold">3</div>
+                    <div className="text-xs opacity-90">Projets</div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                    <div className="text-xl font-bold">{donationStats.recus}</div>
+                    <div className="text-xs opacity-90">Dons reçus</div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                    <div className="text-xl font-bold">5</div>
+                    <div className="text-xs opacity-90">Messages</div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                    <div className="text-xl font-bold">{stats.recoCount}</div>
+                    <div className="text-xs opacity-90">Reconnaissances</div>
+                  </div>
+                </div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                <div className="text-xl font-bold">2</div>
-                <div className="text-xs opacity-90">Dons reçus</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                <div className="text-xl font-bold">5</div>
-                <div className="text-xs opacity-90">Messages</div>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3">
-                <div className="text-xl font-bold">{stats.recoCount}</div>
-                <div className="text-xs opacity-90">Reconnaissances</div>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-5 h-5 text-purple-600" />
-              <h3 className="font-semibold text-slate-800">Actions rapides</h3>
-            </div>
-            <div className="flex flex-col gap-2">
-              <button 
-                onClick={() => setShowNewExpForm(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 rounded-xl transition-all duration-300 text-sm font-medium border border-indigo-200"
-              >
-                <Briefcase className="w-4 h-4" />
-                Ajouter une expérience
-              </button>
-              <button 
-                onClick={() => setShowNewFormForm(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 text-emerald-700 rounded-xl transition-all duration-300 text-sm font-medium border border-emerald-200"
-              >
-                <GraduationCap className="w-4 h-4" />
-                Ajouter une formation
-              </button>
-              <button 
-                onClick={() => setShowNewCertForm(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 rounded-xl transition-all duration-300 text-sm font-medium border border-amber-200"
-              >
-                <Award className="w-4 h-4" />
-                Ajouter une certification
-              </button>
-              <button 
-                onClick={() => setShowUploadCV(true)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 rounded-xl transition-all duration-300 text-sm font-medium border border-purple-200"
-              >
-                <Upload className="w-4 h-4" />
-                Importer mon CV
-              </button>
-            </div>
-          </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <Target className="w-5 h-5 text-purple-600" />
+                  <h3 className="font-semibold text-slate-800">Actions rapides</h3>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {activeView === "parcours" ? (
+                    <>
+                      <button 
+                        onClick={() => setShowNewExpForm(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 rounded-xl transition-all duration-300 text-sm font-medium border border-indigo-200"
+                      >
+                        <Briefcase className="w-4 h-4" />
+                        Ajouter une expérience
+                      </button>
+                      <button 
+                        onClick={() => setShowNewFormForm(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 text-emerald-700 rounded-xl transition-all duration-300 text-sm font-medium border border-emerald-200"
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        Ajouter une formation
+                      </button>
+                      <button 
+                        onClick={() => setShowNewCertForm(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 rounded-xl transition-all duration-300 text-sm font-medium border border-amber-200"
+                      >
+                        <Award className="w-4 h-4" />
+                        Ajouter une certification
+                      </button>
+                      <button 
+                        onClick={() => setShowUploadCV(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 rounded-xl transition-all duration-300 text-sm font-medium border border-purple-200"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Importer mon CV
+                      </button>
+                    </>
+                  ) : activeView === "dons" ? (
+                    <>
+                      <Link href="/dashboard/donations/received">
+                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium">
+                          <Eye className="w-4 h-4" />
+                          Voir tous les dons
+                        </button>
+                      </Link>
+                      <button 
+                        onClick={loadReceivedDonations}
+                        disabled={loadingDonations}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${loadingDonations ? 'animate-spin' : ''}`} />
+                        Actualiser
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center text-slate-500 text-sm py-4">
+                      Consultez votre activité
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-slate-800">Astuce</h3>
-            </div>
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-              <p className="text-sm text-blue-800 leading-relaxed">
-                <strong>💡 Le saviez-vous ?</strong> Un profil complet avec CV augmente vos chances de recevoir des dons de 60% !
-              </p>
+              {activeView === "dons" && donationStats.envoyes > 0 && (
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <Package className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-blue-800">En transit</h3>
+                  </div>
+                  <p className="text-sm text-blue-700 mb-3">
+                    {donationStats.envoyes} don(s) en cours d'acheminement
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-blue-600 bg-white rounded-lg p-3 border border-blue-200">
+                    <Clock className="w-4 h-4" />
+                    Vous serez notifié à la réception
+                  </div>
+                </div>
+              )}
+
+              {activeView === "dons" && donationStats.recus > 0 && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-green-800">Bravo !</h3>
+                  </div>
+                  <p className="text-sm text-green-700 mb-3">
+                    {donationStats.recus} don(s) réceptionné(s) avec succès
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-green-600 bg-white rounded-lg p-3 border border-green-200">
+                    <Gift className="w-4 h-4" />
+                    Merci aux généreux donateurs !
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Award className="w-5 h-5 text-indigo-600" />
+                  <h3 className="font-semibold text-slate-800">Astuce du jour</h3>
+                </div>
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
+                  <p className="text-sm text-indigo-800 leading-relaxed">
+                    <strong className="flex items-center gap-1.5 mb-2">
+                      <Sparkles className="w-4 h-4" />
+                      Le saviez-vous ?
+                    </strong>
+                    {activeView === "parcours" 
+                      ? "Un profil complet avec CV augmente vos chances de recevoir des dons de 60% !"
+                      : activeView === "dons"
+                      ? "Pensez à remercier vos donateurs via la messagerie pour encourager leur générosité !"
+                      : "Participez activement aux projets de votre établissement pour augmenter votre visibilité !"}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
@@ -1548,6 +2035,36 @@ export default function EnseignantDashboard({ user }: EnseignantDashboardProps) 
         title={notificationModal.title}
         message={notificationModal.message}
       />
+
+      {/* Styles pour scrollbars */}
+      <style jsx>{`
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+        
+        .scrollbar-thumb-slate-300::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+        }
+        
+        .scrollbar-track-slate-100::-webkit-scrollbar-track {
+          background: #f1f5f9;
+        }
+      `}</style>
     </div>
   );
 }

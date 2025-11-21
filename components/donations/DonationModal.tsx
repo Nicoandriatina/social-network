@@ -1897,7 +1897,7 @@ const DonationModal = ({ isOpen, onClose, onSuccess, preselectedBeneficiary = nu
           <div className="grid grid-cols-3 gap-3">
             {[
               { value: 'MONETAIRE', label: 'Monétaire', icon: '💰' },
-              { value: 'VIVRES', label: 'Vivres', icon: '🍎' },
+              { value: 'VIVRES', label: 'Alimentaire', icon: '🍎' },
               { value: 'NON_VIVRES', label: 'Matériel', icon: '📚' }
             ].map(type => (
               <button

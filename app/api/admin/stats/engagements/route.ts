@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  console.log("🎯 API Engagement appelée");
+  
   
   const authCheck = await requireSuperAdmin();
   if (authCheck instanceof NextResponse) return authCheck;
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    console.log("📅 Période:", period, "Date de début:", startDate);
+   
 
     // 1. Métriques globales d'engagement (période actuelle)
     const [totalLikes, totalComments, totalShares, totalProjects] = await Promise.all([
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       })
     ]);
 
-    console.log("📊 Métriques:", { totalLikes, totalComments, totalShares, totalProjects });
+    
 
     // 2. Période précédente pour calculer la croissance
     const periodLength = now.getTime() - startDate.getTime();
@@ -142,7 +142,7 @@ export async function GET(request: Request) {
       ? (totalShares / totalProjects) * 100
       : 0;
 
-    console.log("✅ Données prêtes, envoi de la réponse");
+    console.log(" Données prêtes, envoi de la réponse");
 
     return NextResponse.json({
       success: true,

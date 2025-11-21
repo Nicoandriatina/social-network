@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminNavigation from "@/components/admin/AdminNavigation";
-// import AdminHeader from "@/components/admin/AdminHeader";
-// import AdminNavigation from "@/components/admin/AdminNavigation";
+
 
 export const metadata = {
   title: "Administration - Mada Social Network",

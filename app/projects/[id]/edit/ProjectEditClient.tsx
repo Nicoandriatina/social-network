@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/lib/hooks/useCurrentUser';
 import { 
   ArrowLeft, Upload, X, AlertCircle, CheckCircle2, Save,
-  DollarSign, Package, ShoppingCart, Plus, Trash2
+  DollarSign, Package, ShoppingCart, Plus, Trash2, Calendar
 } from 'lucide-react';
 
 interface ProjectEditClientProps {
@@ -26,15 +27,11 @@ const useProjectEdit = (projectId: string) => {
 
     try {
       setLoading(true);
-      console.log('🔍 Fetching project for edit:', projectId);
-      
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
-
-      console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
         if (response.status === 404) throw new Error('Projet non trouvé');
@@ -44,11 +41,9 @@ const useProjectEdit = (projectId: string) => {
       }
 
       const data = await response.json();
-      console.log('✅ Project loaded for edit:', data.project?.titre);
       setProject(data.project);
       setError(null);
     } catch (err) {
-      console.error('❌ Fetch error:', err);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setLoading(false);
@@ -58,6 +53,8 @@ const useProjectEdit = (projectId: string) => {
   const updateProject = async (updateData: any) => {
     setIsSubmitting(true);
     try {
+      console.log('📤 Envoi des données de mise à jour:', updateData);
+      
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -74,6 +71,7 @@ const useProjectEdit = (projectId: string) => {
       }
 
       const result = await response.json();
+      console.log('✅ Réponse de l\'API:', result);
       await fetchProject();
       return { success: true, message: result.message };
     } catch (err) {
@@ -92,6 +90,7 @@ const useProjectEdit = (projectId: string) => {
 
 export default function ProjectEditClient({ projectId }: ProjectEditClientProps) {
   const router = useRouter();
+  const { user: currentUser, loading: userLoading } = useCurrentUser();
   const { project, loading, error, updateProject, isSubmitting } = useProjectEdit(projectId);
   
   const [formData, setFormData] = useState({
@@ -100,7 +99,8 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
     category: '',
     startDate: '',
     endDate: '',
-    budgetEstime: '',
+    coutTotalProjet: '',
+    budgetDisponible: '',
     photos: [] as any[],
     needs: [] as any[]
   });
@@ -119,6 +119,8 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
     priorite: 1
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isAuthor = currentUser && project?.auteur?.id === currentUser.id;
 
   const categories = [
     { value: 'CONSTRUCTION', label: 'Construction' },
@@ -140,19 +142,25 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
 
   useEffect(() => {
     if (project) {
+      const mainMonetaryNeed = project.besoins?.find(
+        (n: any) => n.type === 'MONETAIRE' && n.budgetInclusDansCalcul
+      );
+      const coutTotal = mainMonetaryNeed?.montantCible || 0;
+
       setFormData({
         title: project.titre || '',
         description: project.description || '',
         category: project.categorie || '',
         startDate: project.dateDebut ? project.dateDebut.split('T')[0] : '',
         endDate: project.dateFin ? project.dateFin.split('T')[0] : '',
-        budgetEstime: project.budgetEstime?.toString() || '',
+        coutTotalProjet: coutTotal.toString(),
+        budgetDisponible: project.budgetDisponible?.toString() || '0',
         photos: project.photos?.map((url: string) => ({
           id: Date.now() + Math.random(),
           url: url,
           isExisting: true
         })) || [],
-        needs: project.besoins?.map((need: any) => ({
+        needs: project.besoins?.filter((need: any) => !need.budgetInclusDansCalcul).map((need: any) => ({
           id: need.id,
           type: need.type,
           titre: need.titre,
@@ -161,7 +169,8 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
           quantiteCible: need.quantiteCible?.toString() || '',
           unite: need.unite || '',
           priorite: need.priorite,
-          isExisting: true
+          isExisting: true,
+          typeInfo: needTypes.find(t => t.value === need.type)
         })) || []
       });
     }
@@ -297,6 +306,20 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
       }
     }
 
+    if (!formData.coutTotalProjet || parseFloat(formData.coutTotalProjet) <= 0) {
+      newErrors.coutTotalProjet = 'Le coût total du projet est obligatoire';
+    }
+
+    if (!formData.budgetDisponible || parseFloat(formData.budgetDisponible) < 0) {
+      newErrors.budgetDisponible = 'Le budget disponible est obligatoire';
+    }
+
+    if (formData.coutTotalProjet && formData.budgetDisponible) {
+      if (parseFloat(formData.budgetDisponible) > parseFloat(formData.coutTotalProjet)) {
+        newErrors.budgetDisponible = 'Le budget disponible ne peut pas dépasser le coût total';
+      }
+    }
+
     if (formData.photos.length === 0) {
       newErrors.photos = 'Au moins une photo est requise';
     }
@@ -320,7 +343,8 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
         category: formData.category,
         startDate: formData.startDate || null,
         endDate: formData.endDate || null,
-        budgetEstime: formData.budgetEstime ? parseFloat(formData.budgetEstime) : null,
+        coutTotalProjet: parseFloat(formData.coutTotalProjet),
+        budgetDisponible: parseFloat(formData.budgetDisponible),
         photos: formData.photos.map(photo => 
           photo.isExisting ? photo.url : photo.base64
         ),
@@ -341,7 +365,7 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
       
       setTimeout(() => {
         router.push(`/projects/${projectId}`);
-      }, 200);
+      }, 2000);
 
     } catch (error: any) {
       console.error('Erreur:', error);
@@ -349,13 +373,12 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
     }
   };
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Chargement du projet...</p>
-          <p className="text-xs text-gray-400 mt-2">ID: {projectId}</p>
         </div>
       </div>
     );
@@ -367,14 +390,41 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
         <div className="bg-white rounded-2xl p-8 shadow-xl max-w-md text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Erreur</h2>
-          <p className="text-gray-600 mb-2">{error}</p>
-          <p className="text-xs text-gray-400 mb-6">ID: {projectId}</p>
+          <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => router.push('/dashboard')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Retour
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthor && !userLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8 shadow-xl max-w-md text-center">
+          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Accès refusé</h2>
+          <p className="text-gray-600 mb-6">
+            Vous n'avez pas les permissions pour modifier ce projet.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => router.push(`/projects/${projectId}`)}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Voir le projet
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Tableau de bord
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -396,14 +446,14 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl p-6 mb-8 shadow-xl">
+        <div className="bg-white rounded-2xl p-6 mb-6 shadow-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.back()}
-                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 Retour
@@ -427,33 +477,74 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             </div>
           )}
 
-          {/* Catégorie */}
+          {/* Informations générales */}
           <div className="bg-white rounded-2xl p-6 shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Catégorie du projet</h3>
-            <select
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-              className={`w-full px-4 py-3 border-2 rounded-xl ${
-                errors.category ? 'border-red-400' : 'border-gray-200'
-              }`}
-            >
-              <option value="">Sélectionnez une catégorie</option>
-              {categories.map(cat => (
-                <option key={cat.value} value={cat.value}>{cat.label}</option>
-              ))}
-            </select>
-            {errors.category && (
-              <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
-                {errors.category}
-              </p>
-            )}
-          </div>
-
-          {/* Titre et Description */}
-          <div className="bg-white rounded-2xl p-6 shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Détails du projet</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <Package className="w-6 h-6 text-blue-600" />
+              Informations générales
+            </h3>
+            
             <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Catégorie *
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    className={`w-full px-4 py-3 border-2 rounded-xl ${
+                      errors.category ? 'border-red-400' : 'border-gray-200'
+                    }`}
+                  >
+                    <option value="">Sélectionnez une catégorie</option>
+                    {categories.map(cat => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </select>
+                  {errors.category && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.category}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Date de début
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleInputChange('startDate', e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Date de fin
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleInputChange('endDate', e.target.value)}
+                      className={`w-full px-4 py-3 border-2 rounded-xl ${
+                        errors.endDate ? 'border-red-400' : 'border-gray-200'
+                      }`}
+                    />
+                    {errors.endDate && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4" />
+                        {errors.endDate}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Titre du projet *
@@ -502,6 +593,105 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             </div>
           </div>
 
+          {/* Budget */}
+          <div className="bg-white rounded-2xl p-6 shadow-xl">
+            <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+              <DollarSign className="w-6 h-6 text-green-600" />
+              Budget du projet
+            </h3>
+
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 mb-6 border-2 border-blue-200">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-1 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-2">Comment ça fonctionne ?</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• <strong>Coût total</strong>: Montant nécessaire pour réaliser le projet</li>
+                    <li>• <strong>Budget disponible</strong>: Ce que votre établissement a déjà</li>
+                    <li>• <strong>À collecter</strong>: La différence sera proposée aux donateurs</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Coût total du projet (Ar) *
+                </label>
+                <input
+                  type="number"
+                  value={formData.coutTotalProjet}
+                  onChange={(e) => handleInputChange('coutTotalProjet', e.target.value)}
+                  placeholder="10000000"
+                  className={`w-full px-4 py-3 border-2 rounded-xl ${
+                    errors.coutTotalProjet ? 'border-red-400' : 'border-gray-200'
+                  }`}
+                />
+                {formData.coutTotalProjet && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    {parseInt(formData.coutTotalProjet).toLocaleString()} Ariary
+                  </p>
+                )}
+                {errors.coutTotalProjet && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.coutTotalProjet}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Budget déjà disponible (Ar) *
+                </label>
+                <input
+                  type="number"
+                  value={formData.budgetDisponible}
+                  onChange={(e) => handleInputChange('budgetDisponible', e.target.value)}
+                  placeholder="2000000"
+                  className={`w-full px-4 py-3 border-2 rounded-xl ${
+                    errors.budgetDisponible ? 'border-red-400' : 'border-gray-200'
+                  }`}
+                />
+                {formData.budgetDisponible && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    {parseInt(formData.budgetDisponible).toLocaleString()} Ariary
+                  </p>
+                )}
+                {errors.budgetDisponible && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.budgetDisponible}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {formData.coutTotalProjet && formData.budgetDisponible && (
+              <div className="mt-6 p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-700">Montant à collecter:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {Math.max(0, parseInt(formData.coutTotalProjet) - parseInt(formData.budgetDisponible)).toLocaleString()} Ar
+                  </span>
+                </div>
+                <div className="h-2 bg-white rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500"
+                    style={{ 
+                      width: `${Math.min(100, (parseInt(formData.budgetDisponible) / parseInt(formData.coutTotalProjet)) * 100)}%` 
+                    }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+                  <span>Budget actuel: {((parseInt(formData.budgetDisponible) / parseInt(formData.coutTotalProjet)) * 100).toFixed(1)}%</span>
+                  <span>Objectif: 100%</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Photos */}
           <div className="bg-white rounded-2xl p-6 shadow-xl">
             <h3 className="text-xl font-semibold text-gray-800 mb-6">Photos du projet *</h3>
@@ -518,8 +708,11 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             >
               <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h4 className="text-lg font-semibold text-gray-700 mb-2">
-                Glissez vos photos ici
+                Glissez vos photos ici ou cliquez pour sélectionner
               </h4>
+              <p className="text-gray-500">
+                JPG, PNG, GIF • Maximum 5 photos • 5MB max par photo
+              </p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -538,7 +731,7 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             )}
 
             {formData.photos.length > 0 && (
-              <div className="grid grid-cols-5 gap-4 mt-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
                 {formData.photos.map(photo => (
                   <div key={photo.id} className="relative group">
                     <img
@@ -552,9 +745,9 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
                         e.stopPropagation();
                         removePhoto(photo.id);
                       }}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"
+                      className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -562,72 +755,28 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             )}
           </div>
 
-          {/* Dates et Budget */}
-          <div className="bg-white rounded-2xl p-6 shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Planification</h3>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date de début
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => handleInputChange('startDate', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date de fin
-                </label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => handleInputChange('endDate', e.target.value)}
-                  className={`w-full px-4 py-3 border-2 rounded-xl ${
-                    errors.endDate ? 'border-red-400' : 'border-gray-200'
-                  }`}
-                />
-                {errors.endDate && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {errors.endDate}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Budget estimé (Ar)
-                </label>
-                <input
-                  type="number"
-                  value={formData.budgetEstime}
-                  onChange={(e) => handleInputChange('budgetEstime', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Besoins */}
+          {/* Besoins additionnels */}
           <div className="bg-white rounded-2xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-800">Besoins du projet</h3>
+              <h3 className="text-xl font-semibold text-gray-800">Besoins additionnels</h3>
               <button
                 type="button"
                 onClick={() => setShowNeedForm(!showNeedForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 <Plus className="w-5 h-5" />
-                Ajouter
+                Ajouter un besoin
               </button>
             </div>
 
+            <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Note :</strong> Le besoin monétaire principal est calculé automatiquement à partir du coût total et du budget disponible. Ajoutez ici les besoins additionnels (matériel, vivres, etc.)
+              </p>
+            </div>
+
             {showNeedForm && (
-              <div className="mb-6 p-6 bg-gray-50 rounded-xl border-2">
+              <div className="p-6 bg-gray-50 rounded-xl border-2 mb-6">
                 <h4 className="font-semibold mb-4">Nouveau besoin</h4>
                 <div className="space-y-4">
                   <select
@@ -702,14 +851,14 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
                     <button
                       type="button"
                       onClick={() => setShowNeedForm(false)}
-                      className="px-4 py-2 border-2 border-gray-300 rounded-lg"
+                      className="px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50"
                     >
                       Annuler
                     </button>
                     <button
                       type="button"
                       onClick={addNeed}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                       Ajouter
                     </button>
@@ -721,17 +870,46 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
             {formData.needs.length > 0 ? (
               <div className="space-y-4">
                 {formData.needs.map(need => (
-                  <div key={need.id} className="p-4 bg-gray-50 rounded-xl border-2 flex items-start justify-between">
-                    <div>
-                      <h4 className="font-semibold">{need.titre}</h4>
-                      <p className="text-sm text-gray-600">Type: {need.type}</p>
-                      {need.montantCible && <p className="text-sm">Objectif: {need.montantCible} Ar</p>}
-                      {need.quantiteCible && <p className="text-sm">Objectif: {need.quantiteCible} {need.unite}</p>}
+                  <div key={need.id} className="p-4 bg-gray-50 rounded-xl border-2 flex items-start justify-between hover:border-blue-300 transition-all">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        need.type === 'MONETAIRE' ? 'bg-green-100 text-green-600' :
+                        need.type === 'MATERIEL' ? 'bg-blue-100 text-blue-600' :
+                        'bg-orange-100 text-orange-600'
+                      }`}>
+                        {need.typeInfo?.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-800">{need.titre}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            priorityLevels.find(p => p.value === need.priorite)?.color
+                          }`}>
+                            {priorityLevels.find(p => p.value === need.priorite)?.label}
+                          </span>
+                        </div>
+                        {need.description && (
+                          <p className="text-sm text-gray-600 mb-2">{need.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-gray-500">Type: {need.typeInfo?.label || need.type}</span>
+                          {need.montantCible && (
+                            <span className="font-medium text-green-600">
+                              Objectif: {parseInt(need.montantCible).toLocaleString()} Ar
+                            </span>
+                          )}
+                          {need.quantiteCible && (
+                            <span className="font-medium text-blue-600">
+                              Objectif: {need.quantiteCible} {need.unite}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeNeed(need.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                      className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -740,10 +918,10 @@ export default function ProjectEditClient({ projectId }: ProjectEditClientProps)
               </div>
             ) : (
               <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-medium">Aucun besoin ajouté</p>
+                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium">Aucun besoin additionnel</p>
                 <p className="text-sm text-gray-400 mt-1">
-                  Ajoutez les besoins de votre projet pour faciliter les dons
+                  Le besoin monétaire principal est géré automatiquement
                 </p>
               </div>
             )}
